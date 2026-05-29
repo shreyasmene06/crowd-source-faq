@@ -203,6 +203,10 @@ export const resolvePost = async (req: Request, res: Response): Promise<void> =>
 
     post.status = 'answered';
     post.answer = answer.trim();
+    // Set answerIsExpert flag when a moderator or admin resolves the post
+    if (req.user?.role === 'moderator' || req.user?.role === 'admin' || req.user?.role === 'expert') {
+      post.answerIsExpert = true;
+    }
     await post.save();
 
     // Notify the post author that their question was resolved
@@ -217,6 +221,47 @@ export const resolvePost = async (req: Request, res: Response): Promise<void> =>
     ).catch(() => {}); // non-critical — don't fail the resolve if notification creation fails
 
     res.json({ message: 'Post resolved.', post });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  }
+};
+
+// POST /api/community/:id/request-expert — Request expert help on an unanswered post (protected)
+// Notifies all moderators and admins
+export const requestExpertHelp = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const post = await CommunityPost.findById(req.params.id);
+    if (!post) {
+      res.status(404).json({ message: 'Post not found.' });
+      return;
+    }
+
+    if (post.status === 'answered') {
+      res.status(400).json({ message: 'This post is already answered.' });
+      return;
+    }
+
+    // Find all moderators and admins
+    const moderatorsAndAdmins = await User.find({
+      role: { $in: ['moderator', 'admin', 'expert'] },
+    }).select('_id');
+
+    // Create notifications for each moderator/admin
+    const notificationPromises = moderatorsAndAdmins.map((mod) =>
+      import('./notificationController.js').then((n) =>
+        n.createNotification({
+          recipient: mod._id,
+          type: 'expert_request',
+          title: 'Expert help requested!',
+          message: `A student is waiting for help: "${post.title}"`,
+          link: `/community?post=${post._id}`,
+        })
+      ).catch(() => {})
+    );
+
+    await Promise.all(notificationPromises);
+
+    res.json({ message: 'Expert help requested. Moderators have been notified.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: (error as Error).message });
   }

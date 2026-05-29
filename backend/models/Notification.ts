@@ -4,7 +4,8 @@ export type NotificationType =
   | 'post_resolved'      // user's community post was resolved by admin/mod
   | 'comment_replied'     // someone replied to user's comment
   | 'faq_match_found'     // AI found a matching FAQ for user's post
-  | 'mention';           // user was mentioned in a comment
+  | 'mention'            // user was mentioned in a comment
+  | 'expert_request';   // a user requested expert help on a community post
 
 export interface INotification extends Document {
   recipient: Types.ObjectId;
@@ -26,7 +27,7 @@ const notificationSchema = new MongooseSchema(
     },
     type: {
       type: String,
-      enum: ['post_resolved', 'comment_replied', 'faq_match_found', 'mention'] as NotificationType[],
+      enum: ['post_resolved', 'comment_replied', 'faq_match_found', 'mention', 'expert_request'] as NotificationType[],
       required: true,
     },
     title: {

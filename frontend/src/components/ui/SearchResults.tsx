@@ -1,6 +1,7 @@
-import React, { useState, useRef, type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Badge from './Badge';
+import api from '../../utils/api';
 import type { SearchResult } from '../../types/ui';
 
 interface SourceBadgeProps {
@@ -21,13 +22,28 @@ interface ResultCardProps {
 
 const ResultCard = ({ result }: ResultCardProps) => {
   const [expanded, setExpanded] = useState(false);
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const title = result.question || result.title || '';
   const fullContent = result.answer || result.body || '';
   const hasContent = !!fullContent;
   const isAnswered = result.status === 'answered';
   const isCommunity = result.source === 'community';
+  const isFAQ = result.source === 'faq';
+
+  const handleCardClick = () => {
+    setExpanded((v) => !v);
+  };
+
+  const handleViewFull = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isFAQ) {
+      sessionStorage.setItem('yaksha_faq_highlight', JSON.stringify(result));
+      navigate('/faq');
+    } else {
+      navigate(`/community?post=${result._id}`);
+    }
+  };
 
   return (
     <div
@@ -35,7 +51,7 @@ const ResultCard = ({ result }: ResultCardProps) => {
         ${expanded ? 'border-accent/25 shadow-card-hover' : 'border-border hover:border-accent/15'}`}
     >
       <button
-        onClick={() => setExpanded((v) => !v)}
+        onClick={handleCardClick}
         className="w-full text-left p-4 flex items-start justify-between gap-3 group"
         aria-expanded={expanded}
       >
@@ -75,10 +91,19 @@ const ResultCard = ({ result }: ResultCardProps) => {
 
       {expanded && (
         <div className="px-4 pb-4 border-t border-border">
-          {result.source === 'faq' && fullContent && (
+          {isFAQ && fullContent && (
             <div className="mt-3 rounded-xl bg-accent-light border border-accent/15 p-4">
               <p className="text-xs font-semibold text-accent mb-2 uppercase tracking-wide">Answer</p>
               <p className="text-sm text-ink/75 leading-relaxed whitespace-pre-wrap">{fullContent}</p>
+              <button
+                onClick={handleViewFull}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-dark transition-colors"
+              >
+                View full answer
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M2 6H10M7 3L10 6L7 9" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
           )}
 
@@ -107,19 +132,36 @@ const ResultCard = ({ result }: ResultCardProps) => {
               </p>
             </div>
           )}
+
+          {isCommunity && (
+            <button
+              onClick={handleViewFull}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-dark transition-colors"
+            >
+              Join discussion
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 6H10M7 3L10 6L7 9" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-const CommunityBoardCard = () => {
+interface CommunityBoardCardProps {
+  query?: string;
+}
+
+const CommunityBoardCard = ({ query }: CommunityBoardCardProps) => {
   const navigate = useNavigate();
+  const href = query ? `/community?ask=true&query=${encodeURIComponent(query)}` : '/community';
+
   return (
     <button
-      onClick={() => navigate('/community')}
-      className="bg-card rounded-2xl border border-border shadow-subtle p-4 flex items-center justify-between group
-                 card-hover w-full text-left"
+      onClick={() => navigate(href)}
+      className="bg-card rounded-2xl border border-border shadow-subtle p-4 flex items-center justify-between group card-hover w-full text-left"
     >
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center text-accent">
@@ -128,8 +170,8 @@ const CommunityBoardCard = () => {
           </svg>
         </div>
         <div>
-          <p className="text-sm font-medium text-ink">Go to Community Board</p>
-          <p className="text-xs text-ink-soft">Ask the community your question</p>
+          <p className="text-sm font-medium text-ink">Ask the community</p>
+          <p className="text-xs text-ink-soft">Couldn't find what you needed? Ask a question</p>
         </div>
       </div>
       <span className="text-ink-faint group-hover:text-accent transition-colors">
@@ -141,12 +183,38 @@ const CommunityBoardCard = () => {
   );
 };
 
+interface AlternativePost {
+  _id: string;
+  title: string;
+  body: string;
+  authorName?: string;
+  upvotes?: unknown[];
+  comments?: unknown[];
+  answer?: string;
+  status: string;
+}
+
 interface SearchResultsProps {
   results: SearchResult[] | null;
   loading: boolean;
+  searchQuery?: string;
 }
 
-export default function SearchResults({ results, loading }: SearchResultsProps) {
+export default function SearchResults({ results, loading, searchQuery }: SearchResultsProps) {
+  const navigate = useNavigate();
+  const [alternatives, setAlternatives] = useState<AlternativePost[]>([]);
+
+  // Fetch alternatives when results are 0
+  React.useEffect(() => {
+    if (results && results.length === 0 && searchQuery) {
+      api.get<{ posts: AlternativePost[] }>('/community/solved?limit=3')
+        .then(r => setAlternatives(r.data.posts ?? []))
+        .catch(() => {});
+    } else if (results && results.length > 0) {
+      setAlternatives([]);
+    }
+  }, [results, searchQuery]);
+
   if (loading) {
     return (
       <div className="mt-6 w-full max-w-2xl mx-auto space-y-3">
@@ -165,11 +233,46 @@ export default function SearchResults({ results, loading }: SearchResultsProps) 
 
   if (results.length === 0) {
     return (
-      <div className="mt-6 w-full max-w-2xl mx-auto">
-        <p className="text-center text-sm text-ink-soft mb-3">
-          No matches found. Try asking the community:
-        </p>
-        <CommunityBoardCard />
+      <div className="mt-6 w-full max-w-2xl mx-auto space-y-4">
+        {/* No results state */}
+        <div className="text-center py-6">
+          <p className="text-base font-medium text-ink mb-1">No results{searchQuery ? ` for "${searchQuery}"` : ''}</p>
+          <p className="text-sm text-ink-soft">Couldn't find what you needed? Ask the community!</p>
+        </div>
+
+        <CommunityBoardCard query={searchQuery} />
+
+        {/* Alternative answered posts */}
+        {alternatives.length > 0 && (
+          <div>
+            <p className="text-xs text-ink-faint font-medium uppercase tracking-wide mb-3">
+              Recently answered questions you might find useful
+            </p>
+            <div className="space-y-2">
+              {alternatives.map((post) => (
+                <button
+                  key={post._id}
+                  onClick={() => navigate(`/community?post=${post._id}`)}
+                  className="w-full bg-card rounded-xl border border-border p-4 text-left hover:border-accent/20 hover:shadow-subtle transition-all duration-200"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-success-light flex items-center justify-center">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 5.5L4 7.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-ink line-clamp-1">{post.title}</p>
+                      {post.answer && (
+                        <p className="text-xs text-ink-soft mt-1 line-clamp-1">{post.answer}</p>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

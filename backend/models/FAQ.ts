@@ -13,6 +13,7 @@ export interface IFAQ extends Document {
   status: FAQStatus;
   views: number;
   helpfulVotes: number;
+  unhelpfulVotes: number;
   createdBy: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
@@ -54,6 +55,10 @@ const faqSchema = new MongooseSchema(
       default: 0,
     },
     helpfulVotes: {
+      type: Number,
+      default: 0,
+    },
+    unhelpfulVotes: {
       type: Number,
       default: 0,
     },

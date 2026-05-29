@@ -32,6 +32,16 @@ interface StatsResponse {
   newUsersThisWeek?: number;
 }
 
+interface FailedQuery {
+  query: string;
+  count: number;
+  lastSearched: string;
+}
+
+interface FailedQueriesResponse {
+  queries: FailedQuery[];
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 interface MetricTileProps {
@@ -75,6 +85,10 @@ export default function AdminAnalytics() {
   const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [searchInsights, setSearchInsights] = useState<SearchInsights | null>(null);
   const [activityData, setActivityData] = useState<{ date?: string; searches?: number; users?: number }[]>([]);
+  const [failedQueries, setFailedQueries] = useState<FailedQuery[]>([]);
+  const [faqModal, setFaqModal] = useState(false);
+  const [selectedQuery, setSelectedQuery] = useState('');
+  const [newFaq, setNewFaq] = useState({ question: '', answer: '', category: '', status: 'approved' as const });
   const [range, setRange] = useState<string>('30');
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -97,6 +111,12 @@ export default function AdminAnalytics() {
         console.error(msg, err);
       }).finally(() => setLoading(false));
   }, [range]);
+
+  useEffect(() => {
+    adminApi.get<FailedQueriesResponse>('/analytics/failed-queries')
+      .then(r => setFailedQueries(r.data.queries))
+      .catch(console.error);
+  }, []);
 
   return (
     <div className="space-y-6 pb-8">
@@ -172,6 +192,106 @@ export default function AdminAnalytics() {
                   <span className="text-xs font-medium text-violet-400 shrink-0">{q.count}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Failed Query Triage */}
+      {failedQueries.length > 0 && (
+        <div className="rounded-xl border p-5" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' }}>
+          <p className="text-sm font-semibold text-white/80 mb-0.5">Failed Query Triage</p>
+          <p className="text-xs text-white/30 mb-4">Queries that returned zero results — convert them into FAQs</p>
+          <div className="space-y-1">
+            <div className="grid grid-cols-[40px_1fr_80px_100px] gap-3 px-3 py-2 border-b text-[10px] font-semibold text-white/25 uppercase tracking-wider">
+              <span>#</span>
+              <span>Query</span>
+              <span className="text-right">Searches</span>
+              <span className="text-right">Action</span>
+            </div>
+            {failedQueries.slice(0, 30).map((item, i) => (
+              <div key={i} className="grid grid-cols-[40px_1fr_80px_100px] gap-3 px-3 py-2.5 items-center hover:bg-white/[0.02] transition-colors border-b border-white/[0.03]" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <span className="text-xs text-white/30 font-medium">{i + 1}</span>
+                <span className="text-xs text-white/70 truncate" title={item.query}>{item.query}</span>
+                <span className="text-xs text-white/40 text-right tabular-nums">{item.count}</span>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => { setSelectedQuery(item.query); setNewFaq(f => ({ ...f, question: item.query })); setFaqModal(true); }}
+                    className="px-3 py-1 rounded-lg text-xs font-medium text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                    Create FAQ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Create FAQ Modal */}
+      {faqModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="w-full max-w-md rounded-2xl border p-6" style={{ background: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-sm font-semibold text-white/80">Create FAQ from Failed Query</h3>
+              <button onClick={() => setFaqModal(false)} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/30 hover:bg-white/5 transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-white/40 mb-1.5">Question</label>
+                <input
+                  value={newFaq.question}
+                  onChange={e => setNewFaq(f => ({ ...f, question: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white/80 outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  readOnly
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/40 mb-1.5">Answer</label>
+                <textarea
+                  rows={4}
+                  value={newFaq.answer}
+                  onChange={e => setNewFaq(f => ({ ...f, answer: e.target.value }))}
+                  placeholder="Enter the answer…"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white/80 placeholder-white/20 outline-none resize-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/40 mb-1.5">Category</label>
+                <input
+                  value={newFaq.category}
+                  onChange={e => setNewFaq(f => ({ ...f, category: e.target.value }))}
+                  placeholder="e.g. Technical"
+                  className="w-full px-3 py-2 rounded-lg text-sm text-white/80 placeholder-white/20 outline-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setFaqModal(false)}
+                  className="px-4 py-2 rounded-lg text-sm text-white/40 hover:bg-white/[0.04] transition-colors">
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newFaq.answer || !newFaq.category) return;
+                    try {
+                      await adminApi.post('/admin/faq', newFaq);
+                      setFaqModal(false);
+                      setNewFaq({ question: '', answer: '', category: '', status: 'approved' });
+                      setFailedQueries(q => q.filter(x => x.query !== selectedQuery));
+                    } catch { console.error('Failed to create FAQ'); }
+                  }}
+                  disabled={!newFaq.answer || !newFaq.category}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-40 transition-all"
+                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                  Create FAQ
+                </button>
+              </div>
             </div>
           </div>
         </div>

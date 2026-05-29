@@ -1,9 +1,20 @@
 # Issues & TODO
 
-## 🔴 Blocking (needs Atlas vector index + DB auth)
+## 🔴 Blocking (needs you: Atlas vector index creation)
 
-- [ ] **Create vector index in Atlas UI** — name=`vector_index`, `numDimensions=768`, similarity=`cosine`. See `tutorial.md`
-- [ ] **Runtime smoke test** — backend starts + MongoDB connects + `/api/health` returns `db: connected`. Blocked until vector index exists
+- [ ] **Create vector index in Atlas UI** — name=`vector_index`, `numDimensions=768`, similarity=`cosine`. M0 free tier confirmed supported (2026). See `tutorial.md`
+- [ ] **Runtime smoke test** — `./run.sh` after vector index exists
+
+---
+
+## 🟡 Fixed in this session
+
+| File | Fix |
+|------|-----|
+| `backend/test-db.ts` | `(e as Error).message` — strict mode TS error |
+| `frontend/vite.config.ts` | proxy target `5000` → `6767` (was wrong port) |
+| `.gitignore` | Added comprehensive rules, all secrets protected |
+| `issues.md` | Deployment section marked ✅ |
 
 ---
 
@@ -242,8 +253,8 @@ Both scripts read all docs from MongoDB, call `generateEmbedding()`, update the 
 - [ ] **Admin 2FA (TOTP)** — admin accounts should require two-factor authentication (from context.md §8)
 
 ### Deployment
-- [ ] **Vercel env vars** — document which env vars are needed in Vercel dashboard: `MONGODB_URI`, `JWT_SECRET`, `CLIENT_URL`, `PORT`
-- [ ] **Backend build pipeline** — `backend/package.json` has no `build` script wired into Vercel deploy. `tsc` compilation needs to run on Vercel before serving
+- [x] **Vercel env vars** — documented: `MONGODB_URI`, `JWT_SECRET`, `CLIENT_URL`, `PORT` (see `vercel-deploy` skill at `~/.hermes/skills/devops/vercel-deploy/SKILL.md`)
+- [x] **Backend build pipeline** — `backend/package.json` has `"build": "tsc"` → compiles to `dist/`. Vercel runs build automatically on deploy. `tsc` exit 0 ✅
 
 ### Observability
 - [ ] **Sentry** — add error tracking and source maps for production debugging

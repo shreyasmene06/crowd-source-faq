@@ -15,6 +15,8 @@ import {
   getReports,
   getActivityFeed,
   getUserActivityChart,
+  getCommunityPosts,
+  deleteCommunityPost,
 } from '../controllers/adminController';
 
 const router = Router();
@@ -30,11 +32,13 @@ router.get('/faqs', getAdminFAQs);
 router.get('/reports', getReports);
 router.get('/activity-feed', getActivityFeed);
 router.get('/user-activity-chart', getUserActivityChart);
+router.get('/community/posts', getCommunityPosts);
 
 router.post('/faq', createFAQ);
 router.post('/faq/approve', approveFAQ);
 router.post('/faq/reject', rejectFAQ);
 router.put('/faq/:id', updateFAQ);
 router.delete('/faq/:id', deleteFAQ);
+router.delete('/community/:id', deleteCommunityPost);
 
 export default router;

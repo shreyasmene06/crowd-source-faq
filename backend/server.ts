@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 import connectDB from './config/db.js';
 import authRoutes from './routes/auth.js';
 import faqRoutes from './routes/faq.js';
@@ -13,9 +14,27 @@ import searchRoutes from './routes/search.js';
 import adminRoutes from './routes/admin.js';
 import analyticsRoutes from './routes/analytics.js';
 import notificationRoutes from './routes/notification.js';
+import { logger } from './utils/logger.js';
+import * as Sentry from '@sentry/node';
+import { expressIntegration } from '@sentry/node';
 
 // Load environment variables (.env)
 dotenv.config();
+
+// Initialize Sentry
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV ?? 'development',
+  integrations: [
+    expressIntegration(),
+  ],
+  tracesSampleRate: 0.1, // 10% of transactions sampled
+});
+
+// Track unhandled promise rejections
+process.on('unhandledRejection', (reason) => {
+  Sentry.captureException(reason);
+});
 
 const app = express();
 
@@ -29,7 +48,15 @@ app.use(async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// 1. Dynamic CORS Configuration (Must be first to handle preflight requests!)
+// 2. Request ID middleware — generates UUID for each request
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const requestId = uuidv4();
+  (req as Request & { id: string }).id = requestId;
+  res.setHeader('X-Request-ID', requestId);
+  next();
+});
+
+// 3. Dynamic CORS Configuration (Must be first to handle preflight requests!)
 // Defines which frontend domains are allowed to communicate with this API
 const allowedOrigins = [
   'http://localhost:5173',
@@ -55,7 +82,7 @@ app.use(cors({
   credentials: true, // Required to allow cookies/auth headers
 }));
 
-// 2. Security & Logging Middleware
+// 4. Security & Logging Middleware
 app.use(helmet({
   crossOriginResourcePolicy: false, // Adjusted to allow secure cross-origin API requests
 }));
@@ -114,10 +141,22 @@ app.get('/api/health', async (req: Request, res: Response) => {
   });
 });
 
+// 6b. Warm-up endpoint — pre-loads the ML embedding model so first real request isn't slow
+app.post('/api/warm', async (_req: Request, res: Response) => {
+  try {
+    await import('./utils/embeddings.js').then(m => m.warmEmbedder());
+    res.json({ status: 'warmed' });
+  } catch {
+    res.status(500).json({ status: 'warm failed' });
+  }
+});
+
 // 7. Global Error Handler
 // Catches unhandled errors across the app and standardizes the JSON response
 app.use((err: { status?: number; message?: string; stack?: string }, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
+  const requestId: string = (req as Request & { id: string }).id || '-';
+  Sentry.captureException(err);
+  logger.error(err.stack || err.message || 'Unknown error', { status: err.status }, requestId);
   res.status(err.status || 500).json({
     message: err.message || 'Internal server error',
     // Only expose detailed stack traces in development mode for security
@@ -125,13 +164,65 @@ app.use((err: { status?: number; message?: string; stack?: string }, req: Reques
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 6767;
+
+// Environment Validation
+function validateEnv(): void {
+  const errors: string[] = [];
+
+  // Required: MONGODB_URI
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri) {
+    errors.push('MONGODB_URI is required');
+  } else if (!/^mongodb(\+srv)?:\/\/.+/.test(mongoUri)) {
+    errors.push('MONGODB_URI must be a mongodb:// or mongodb+srv:// URL');
+  }
+
+  // Required: JWT_SECRET
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    errors.push('JWT_SECRET is required');
+  } else if (jwtSecret.length < 8) {
+    errors.push('JWT_SECRET must be at least 8 characters');
+  }
+
+  // Optional: PORT
+  const port = process.env.PORT;
+  if (port !== undefined && !/^\d+$/.test(port)) {
+    errors.push('PORT must be numeric');
+  }
+
+  // Optional: CLIENT_URL
+  const clientUrl = process.env.CLIENT_URL;
+  if (clientUrl !== undefined && !/^https?:\/\/.+/.test(clientUrl)) {
+    errors.push('CLIENT_URL must be a valid http:// or https:// URL');
+  }
+
+  // Optional: REDIS_URL
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl !== undefined) {
+    if (!/^https?:\/\/.+/.test(redisUrl)) {
+      errors.push('REDIS_URL must be a valid URL');
+    }
+    // REDIS_TOKEN required if REDIS_URL is provided
+    if (!process.env.REDIS_TOKEN) {
+      errors.push('REDIS_TOKEN is required when REDIS_URL is provided');
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error('Environment validation failed:');
+    errors.forEach(e => console.error(`  - ${e}`));
+    process.exit(1);
+  }
+}
 
 // 8. Server Initialization
 // Prevents direct listening in production if deployed as a serverless function (e.g., Vercel)
 if (process.env.NODE_ENV !== 'production') {
+  validateEnv();
   app.listen(PORT, () => {
-    console.log(`Yaksha FAQ Portal backend running on port ${PORT}`);
+    logger.info(`Yaksha FAQ Portal backend running on port ${PORT}`);
   });
 }
 

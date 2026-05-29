@@ -1,7 +1,13 @@
 import React, { useState, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Badge from './Badge';
+import api from '../../utils/api';
 import type { SearchResult } from '../../types/ui';
+
+interface Suggestion {
+  _id: string;
+  question: string;
+  category: string;
+}
 
 interface SearchBarProps {
   onResults: (results: SearchResult[] | null) => void;
@@ -27,10 +33,15 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
   },
   ref
 ) {
+  const navigate = useNavigate();
   const [internalQuery, setInternalQuery] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const isControlled = value !== undefined;
   const query = isControlled ? (value ?? '') : internalQuery;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const handleSearch = async (searchQuery: string) => {
     if (!searchQuery.trim() || searchQuery.trim().length < 3) {
@@ -40,18 +51,27 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
 
     onLoading(true);
     try {
-      const res = await fetch('/api/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery.trim() }),
-      });
-      const data = await res.json();
-      onResults(data.results as SearchResult[]);
-    } catch (error) {
-      console.error('Search failed:', error);
+      const res = await api.post<{ results: SearchResult[] }>('/search', { query: searchQuery.trim() });
+      onResults(res.data.results ?? null);
+    } catch {
       onResults([]);
     } finally {
       onLoading(false);
+    }
+  };
+
+  const fetchSuggestions = async (q: string) => {
+    if (q.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    try {
+      const res = await api.get<{ suggestions: Suggestion[] }>(`/search/suggest?q=${encodeURIComponent(q.trim())}`);
+      setSuggestions(res.data.suggestions ?? []);
+      setShowSuggestions(true);
+    } catch {
+      setSuggestions([]);
     }
   };
 
@@ -63,23 +83,49 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
       setInternalQuery(val);
     }
 
+    // Suggestion debounce (300ms)
+    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    suggestDebounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+
+    // Search debounce (600ms)
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (val.trim().length >= 3) {
       debounceRef.current = setTimeout(() => handleSearch(val), 600);
+      setShowSuggestions(false);
     } else {
       onResults(null);
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    setShowSuggestions(false);
     handleSearch(query);
+  };
+
+  const handleSuggestionClick = (faqId: string) => {
+    setShowSuggestions(false);
+    setSuggestions([]);
+    navigate(`/faq/${faqId}`);
+  };
+
+  // Close suggestions on outside click
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    onBlur?.();
+    // Delay so click on suggestion registers first
+    setTimeout(() => {
+      if (wrapperRef.current && !wrapperRef.current.contains(document.activeElement)) {
+        setShowSuggestions(false);
+      }
+    }, 200);
   };
 
   return (
     <form onSubmit={handleSubmit} className={`w-full max-w-3xl mx-auto ${className}`}>
-      <div className="relative search-glow rounded-[26px] transition-all duration-300">
+      <div ref={wrapperRef} className="relative search-glow rounded-[26px] transition-all duration-300">
         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -93,9 +139,10 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
           value={query}
           onChange={handleChange}
           onFocus={onFocus}
-          onBlur={onBlur}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className="w-full pl-12 pr-32 py-5 sm:py-[22px] rounded-[26px] border border-border/70 bg-cream text-sm sm:text-base text-ink placeholder-ink-faint focus:outline-none focus:border-accent/50 focus:bg-white transition-all duration-300 shadow-[0_14px_34px_rgba(0,0,0,0.08)]"
+          autoComplete="off"
         />
 
         <button
@@ -109,6 +156,27 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
           </svg>
           Search
         </button>
+
+        {/* Suggestions dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-border rounded-2xl shadow-[0_14px_34px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+            {suggestions.map((s) => (
+              <button
+                key={s._id}
+                type="button"
+                onMouseDown={() => handleSuggestionClick(s._id)}
+                className="w-full text-left px-5 py-3.5 text-sm text-ink hover:bg-cream/60 transition-colors duration-150 border-b border-border/30 last:border-0 flex items-center gap-3"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-accent shrink-0">
+                  <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M9.5 9.5L12.5 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                <span className="line-clamp-1">{s.question}</span>
+                <span className="ml-auto text-xs text-ink-faint shrink-0">{s.category}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </form>
   );

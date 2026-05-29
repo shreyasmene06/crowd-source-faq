@@ -28,6 +28,10 @@ const commentSchema = new MongooseSchema(
       type: Boolean,
       default: false, // Moderators can mark a comment as the verified "top answer"
     },
+    isExpertAnswer: {
+      type: Boolean,
+      default: false, // Set to true when a moderator/expert writes this comment as an official answer
+    },
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt to each comment
 );
@@ -42,6 +46,7 @@ export interface IComment {
   upvotes: Types.ObjectId[];
   downvotes: Types.ObjectId[];
   verified: boolean;
+  isExpertAnswer: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +58,7 @@ export interface ICommunityPost extends Document {
   author: Types.ObjectId;
   status: CommunityPostStatus;
   answer: string | null;
+  answerIsExpert?: boolean;
   upvotes: Types.ObjectId[];
   comments: IComment[];
   embedding?: number[];
@@ -84,6 +90,10 @@ const communityPostSchema = new MongooseSchema(
     answer: {
       type: String,
       default: null, // Stores the official/accepted answer text
+    },
+    answerIsExpert: {
+      type: Boolean,
+      default: false, // Set to true when a moderator/expert resolves the post
     },
     upvotes: {
       type: [MongooseSchema.Types.ObjectId],

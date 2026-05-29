@@ -18,6 +18,7 @@ import AdminUsers from './admin/pages/AdminUsers';
 import AdminSearch from './admin/pages/AdminSearch';
 import AdminReports from './admin/pages/AdminReports';
 import AdminSettings from './admin/pages/AdminSettings';
+import AdminCommunity from './admin/pages/AdminCommunity';
 import AdminLayout from './admin/components/layout/AdminLayout';
 
 interface ProtectedRouteProps {
@@ -101,6 +102,7 @@ function AppRoutes() {
       <Route path="/admin/search" element={<AdminRoute><AdminLayout><AdminSearch /></AdminLayout></AdminRoute>} />
       <Route path="/admin/reports" element={<AdminRoute><AdminLayout><AdminReports /></AdminLayout></AdminRoute>} />
       <Route path="/admin/settings" element={<AdminRoute><AdminLayout><AdminSettings /></AdminLayout></AdminRoute>} />
+      <Route path="/admin/community" element={<AdminRoute><AdminLayout><AdminCommunity /></AdminLayout></AdminRoute>} />
 
       {/* Catch-all fallback: Redirect any unknown URLs to the home page */}
       <Route path="*" element={<Navigate to="/" replace />} />

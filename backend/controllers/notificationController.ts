@@ -4,7 +4,7 @@ import Notification from '../models/Notification.js';
 
 export interface CreateNotificationParams {
   recipient: Types.ObjectId;
-  type: 'post_resolved' | 'comment_replied' | 'faq_match_found' | 'mention';
+  type: 'post_resolved' | 'comment_replied' | 'faq_match_found' | 'mention' | 'expert_request';
   title: string;
   message: string;
   link?: string;

@@ -2,7 +2,7 @@ import mongoose, { Document, Schema as MongooseSchema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 // User roles enum
-export type UserRole = 'user' | 'moderator' | 'admin' | 'ai_moderator';
+export type UserRole = 'user' | 'moderator' | 'admin' | 'ai_moderator' | 'expert';
 
 // Interface for the User document
 export interface IUser extends Document {
@@ -37,7 +37,7 @@ const userSchema = new MongooseSchema(
     },
     role: {
       type: String,
-      enum: ['user', 'moderator', 'admin', 'ai_moderator'] as UserRole[], // Strict role-based access control (RBAC)
+      enum: ['user', 'moderator', 'admin', 'ai_moderator', 'expert'] as UserRole[], // Strict role-based access control (RBAC)
       default: 'user',
     },
   },

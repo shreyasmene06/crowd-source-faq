@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Yaksha FAQ Portal — Run All
+# Yaksha FAQ Portal — Full Stack Runner
 # Usage: ./run.sh
 # ============================================================
 
@@ -13,130 +13,77 @@ FONT="\033[94m"
 OK="\033[92m"
 WARN="\033[93m"
 ERROR="\033[91m"
-BOLD="\033[1m"
 RESET="\033[0m"
 
-log()   { echo -e "${FONT}[yaksha]${RESET} $1"; }
-ok()    { echo -e "${OK}[✔]${RESET} $1"; }
-warn()  { echo -e "${WARN}[!]${RESET} $1"; }
-die()   { echo -e "${ERROR}[✘]${RESET} $1" >&2; exit 1; }
+log()  { echo -e "${FONT}[yaksha]${RESET} $1"; }
+ok()   { echo -e "${OK}[✔]${RESET} $1"; }
+warn() { echo -e "${WARN}[!]${RESET} $1"; }
+die()  { echo -e "${ERROR}[✘]${RESET} $1" >&2; exit 1; }
 
-# ── Helpers ────────────────────────────────────────────────
+BACKEND_PID=""
+FRONTEND_PID=""
 
-stop_port() {
-  local port=$1
-  local pid=$(lsof -ti :$port 2>/dev/null || true)
-  if [ -n "$pid" ]; then
-    warn "Port $port in use — killing PID $pid"
-    kill $pid 2>/dev/null || true
-    sleep 1
-  fi
+cleanup() {
+  echo ""
+  warn "Shutting down..."
+  [ -n "$BACKEND_PID" ] && kill $BACKEND_PID 2>/dev/null || true
+  [ -n "$FRONTEND_PID" ] && kill $FRONTEND_PID 2>/dev/null || true
+  ok "Done."
+  exit 0
+}
+trap cleanup SIGINT SIGTERM
+
+# ── Check backend health ────────────────────────────────────
+wait_for_backend() {
+  local max_wait=20
+  local waited=0
+  log "Waiting for backend to be ready..."
+  while [ $waited -lt $max_wait ]; do
+    local status=$(curl -sf --max-time 2 http://localhost:6767/api/health 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('db','?'))" 2>/dev/null || echo "waiting")
+    if [ "$status" = "connected" ]; then
+      ok "MongoDB connected"
+      return 0
+    fi
+    sleep 2
+    waited=$((waited + 2))
+    echo -n "."
+  done
+  warn "Backend DB not connected after ${max_wait}s — continuing anyway"
 }
 
-# Checks HTTP response code (200 = up)
-is_http_up() {
-  curl -sf --max-time 3 "$1" > /dev/null 2>&1
-}
-
-# Checks health endpoint for "db":"connected" in JSON
-is_db_connected() {
-  local response
-  response=$(curl -sf --max-time 5 "http://localhost:6767/api/health" 2>/dev/null)
-  echo "$response" | grep -q '"db":"connected"'
-}
-
-# ── Banner ─────────────────────────────────────────────────
-
-echo ""
-echo -e "${BOLD}Yaksha FAQ Portal${RESET}"
-echo "============================================="
-echo ""
-
-# ── Prerequisites ──────────────────────────────────────────
-
-if ! command -v node &> /dev/null; then
-  die "Node.js is not installed"
-fi
-
-BACKEND="$ROOT/backend"
-
-if [ ! -f "$BACKEND/.env" ]; then
-  warn ".env missing — creating from .env.example..."
-  if [ -f "$BACKEND/.env.example" ]; then
-    cp "$BACKEND/.env.example" "$BACKEND/.env"
-    log "Created backend/.env from .env.example"
-  fi
-  log "Edit backend/.env before running."
-  log "Add: JWT_SECRET, MONGODB_URI"
-  exit 1
-fi
-
-# Warn about JWT_SECRET if still placeholder
-if grep -q "JWT_SECRET=yaksha" "$BACKEND/.env" 2>/dev/null; then
-  warn "backend/.env still has placeholder JWT_SECRET"
-  log "Change it to a real secret before running"
-fi
-
-# ── Backend ────────────────────────────────────────────────
-
-if is_http_up "http://localhost:6767/api/health"; then
-  ok "Backend already running on :6767"
-else
-  stop_port 6767
-
+# ── Start backend ──────────────────────────────────────────
+start_backend() {
   log "Starting backend..."
-  "$SCRIPT_DIR/scripts/backend.sh" &
-  sleep 3
-fi
+  cd "$ROOT/backend"
+  npm run dev &
+  BACKEND_PID=$!
+  ok "Backend PID $BACKEND_PID"
+}
 
-# Wait for DB connection (up to 20s)
-log "Checking MongoDB connection..."
-DB_READY=false
-for i in $(seq 1 10); do
-  if is_db_connected; then
-    DB_READY=true
-    break
-  fi
-  sleep 2
-done
-
-if $DB_READY; then
-  ok "MongoDB connected"
-else
-  warn "MongoDB NOT connected — check backend/.env credentials"
-  log "Health check: http://localhost:6767/api/health"
-  log "Common causes: wrong password, IP not whitelisted in Atlas, cluster name typo"
-fi
-
-# ── Frontend ───────────────────────────────────────────────
-
-if is_http_up "http://localhost:5173"; then
-  ok "Frontend already running on :5173"
-else
-  stop_port 5173
+# ── Start frontend ─────────────────────────────────────────
+start_frontend() {
   log "Starting frontend..."
-  "$SCRIPT_DIR/scripts/frontend.sh" &
-  sleep 2
-fi
+  cd "$ROOT/frontend"
+  npm run dev &
+  FRONTEND_PID=$!
+  ok "Frontend PID $FRONTEND_PID"
+}
 
-# ── Done ───────────────────────────────────────────────────
-
+# ── Main ───────────────────────────────────────────────────
 echo ""
-echo -e "${BOLD}=============================================${RESET}"
-
-if $DB_READY; then
-  ok "Yaksha FAQ Portal is running!"
-else
-  warn "Portal is running but MongoDB is disconnected"
-fi
-
-echo ""
-echo -e "  Frontend  ${FONT}→${RESET}  http://localhost:5173"
-echo -e "  Backend   ${FONT}→${RESET}  http://localhost:6767"
-echo -e "  Health    ${FONT}→${RESET}  http://localhost:6767/api/health"
-echo ""
-echo "  Ctrl+C to stop all services"
+log "Yaksha FAQ Portal"
 echo ""
 
+start_backend
+wait_for_backend
+start_frontend
+
+echo ""
+ok "Backend  →  http://localhost:6767"
+ok "Frontend →  http://localhost:5173"
+echo ""
+log "Press Ctrl+C to stop"
+echo ""
+
+# Wait indefinitely (scripts run in background)
 wait
-trap 'echo ""; log "Stopping..."; kill %1 %2 2>/dev/null || true; exit 0' INT

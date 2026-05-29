@@ -2,6 +2,8 @@ import { pipeline, FeatureExtractionPipeline } from '@xenova/transformers';
 
 // Cached resolved pipeline — initialized on first call, reused for all subsequent calls
 let cachedEmbedder: FeatureExtractionPipeline | null = null;
+// Track whether the model has been warmed (i.e., downloaded and ready)
+let isWarmed = false;
 
 async function getEmbedder(): Promise<FeatureExtractionPipeline> {
   if (!cachedEmbedder) {
@@ -11,9 +13,15 @@ async function getEmbedder(): Promise<FeatureExtractionPipeline> {
       'feature-extraction',
       'Xenova/multi-qa-mpnet-base-dot-v1'
     ) as FeatureExtractionPipeline;
+    isWarmed = true;
   }
   return cachedEmbedder;
 }
+
+/** Warm up the embedding pipeline so the first real request isn't slow. */
+export const warmEmbedder = async (): Promise<void> => {
+  await getEmbedder();
+};
 
 /**
  * Generate a semantic embedding for the given text using a local Transformer model.

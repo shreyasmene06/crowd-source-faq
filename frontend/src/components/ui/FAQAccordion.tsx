@@ -1,13 +1,29 @@
 import React, { useState } from 'react';
+import api from '../../utils/api';
 import type { FAQItem } from '../../types/ui';
 
-interface FAQItemProps {
-  question: string;
-  answer: string;
+interface FAQItemProps extends FAQItem {
+  onVoteUpdate?: (id: string, helpfulVotes: number, unhelpfulVotes: number) => void;
 }
 
-const FAQItem = ({ question, answer }: FAQItemProps) => {
+const FAQItemComponent = ({ _id, question, answer, helpfulVotes = 0, unhelpfulVotes = 0, onVoteUpdate }: FAQItemProps) => {
   const [open, setOpen] = useState(false);
+  const [voted, setVoted] = useState<'helpful' | 'unhelpful' | null>(null);
+  const [hv, setHv] = useState(helpfulVotes);
+  const [uhv, setUhv] = useState(unhelpfulVotes);
+
+  const handleVote = async (helpful: boolean) => {
+    if (voted) return;
+    try {
+      const res = await api.patch<{ helpfulVotes: number; unhelpfulVotes: number }>(`/faq/${_id}/feedback`, { helpful });
+      setHv(res.data.helpfulVotes);
+      setUhv(res.data.unhelpfulVotes);
+      setVoted(helpful ? 'helpful' : 'unhelpful');
+      onVoteUpdate?.(_id, res.data.helpfulVotes, res.data.unhelpfulVotes);
+    } catch {
+      // silently fail — voting is best-effort
+    }
+  };
 
   return (
     <div className="border-b border-border last:border-0">
@@ -36,6 +52,35 @@ const FAQItem = ({ question, answer }: FAQItemProps) => {
           <p className="text-sm text-ink-soft leading-relaxed whitespace-pre-line">
             {answer}
           </p>
+          {/* Was this helpful? */}
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-xs text-ink-faint">Was this helpful?</span>
+            <button
+              onClick={() => handleVote(true)}
+              disabled={voted !== null}
+              title="Helpful"
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all duration-200 ${
+                voted === 'helpful'
+                  ? 'border-accent/40 bg-accent-light text-accent'
+                  : 'border-border text-ink-faint hover:border-accent/40 hover:text-accent'
+              } disabled:cursor-default`}
+            >
+              👍 <span className="font-medium">{hv}</span>
+            </button>
+            <button
+              onClick={() => handleVote(false)}
+              disabled={voted !== null}
+              title="Not helpful"
+              className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all duration-200 ${
+                voted === 'unhelpful'
+                  ? 'border-red-200 bg-red-50 text-red-600'
+                  : 'border-border text-ink-faint hover:border-red-200 hover:text-red-500'
+              } disabled:cursor-default`}
+            >
+              👎 <span className="font-medium">{uhv}</span>
+            </button>
+            {voted && <span className="text-xs text-ink-faint ml-1">· thanks for the feedback!</span>}
+          </div>
         </div>
       )}
     </div>
@@ -58,7 +103,7 @@ export default function FAQAccordion({ category, items }: FAQAccordionProps) {
 
       <div className="px-5">
         {items.map((faq) => (
-          <FAQItem key={faq._id} question={faq.question} answer={faq.answer} />
+          <FAQItemComponent key={faq._id} {...faq} />
         ))}
       </div>
     </div>

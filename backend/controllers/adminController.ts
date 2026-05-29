@@ -3,6 +3,7 @@ import FAQ, { IFAQ } from '../models/FAQ.js';
 import User, { IUser } from '../models/User.js';
 import SearchLog from '../models/SearchLog.js';
 import AdminLog from '../models/AdminLog.js';
+import CommunityPost from '../models/CommunityPost.js';
 
 const logAction = async (
   adminId: string,
@@ -416,6 +417,55 @@ export const getUserActivityChart = async (req: Request, res: Response): Promise
     }
 
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  }
+};
+
+// GET /api/admin/community/posts
+export const getCommunityPosts = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+    const search = (req.query.search as string) || '';
+    const status = (req.query.status as string) || '';
+
+    const query: Record<string, unknown> = {};
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { body: { $regex: search, $options: 'i' } },
+      ];
+    }
+    if (status) query.status = status;
+
+    const [posts, total] = await Promise.all([
+      CommunityPost.find(query)
+        .select('-embedding')
+        .populate('author', 'name email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      CommunityPost.countDocuments(query),
+    ]);
+
+    res.json({ posts, total, page, pages: Math.ceil(total / limit) });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  }
+};
+
+// DELETE /api/admin/community/:id
+export const deleteCommunityPost = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const post = await CommunityPost.findByIdAndDelete(req.params.id);
+    if (!post) {
+      res.status(404).json({ message: 'Post not found.' });
+      return;
+    }
+    await logAction(req.user!._id.toString(), 'delete_community_post', post._id.toString(), 'community_post', post.title);
+    res.json({ message: 'Post deleted.' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: (error as Error).message });
   }

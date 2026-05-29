@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import FAQ, { IFAQ } from '../models/FAQ';
 import { generateEmbedding } from '../utils/embeddings';
+import { logger } from '../utils/logger.js';
 
 // Query params interface for getAllFAQs
 interface GetAllFAQsQuery {
@@ -282,7 +283,32 @@ export const checkFAQMatch = async (req: Request<{}, {}, CheckFAQMatchBody>, res
       } : null,
     });
   } catch (error) {
-    console.error('FAQ match check error:', error);
+    logger.error('FAQ match check error', { error: error instanceof Error ? error.message : String(error) });
     res.status(500).json({ message: 'Server error', error: (error as Error).message });
+  }
+};
+
+// PATCH /api/faq/:id/feedback — Helpful/unhelpful vote on an FAQ
+export const submitFeedback = async (req: Request<{ id: string }, {}, { helpful: boolean }>, res: Response): Promise<void> => {
+  try {
+    const { helpful } = req.body;
+    if (typeof helpful !== 'boolean') {
+      res.status(400).json({ message: 'helpful boolean is required' });
+      return;
+    }
+    const faq = await FAQ.findById(req.params.id).select('_id helpfulVotes unhelpfulVotes');
+    if (!faq) {
+      res.status(404).json({ message: 'FAQ not found' });
+      return;
+    }
+    if (helpful) {
+      faq.helpfulVotes = (faq.helpfulVotes ?? 0) + 1;
+    } else {
+      faq.unhelpfulVotes = (faq.unhelpfulVotes ?? 0) + 1;
+    }
+    await faq.save();
+    res.json({ helpfulVotes: faq.helpfulVotes, unhelpfulVotes: faq.unhelpfulVotes });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
 };

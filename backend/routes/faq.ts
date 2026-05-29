@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllFAQs, getFAQById, createFAQ, updateFAQ, deleteFAQ, checkFAQMatch, getPaginatedFAQs } from '../controllers/faqController.js';
+import { getAllFAQs, getFAQById, createFAQ, updateFAQ, deleteFAQ, checkFAQMatch, getPaginatedFAQs, submitFeedback } from '../controllers/faqController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = Router();
@@ -25,5 +25,8 @@ router.put('/:id', protect, authorize('admin', 'moderator'), updateFAQ);
 
 // DELETE /api/faq/:id — Delete an FAQ (Admin/Moderator only)
 router.delete('/:id', protect, authorize('admin', 'moderator'), deleteFAQ);
+
+// PATCH /api/faq/:id/feedback — Vote on FAQ helpfulness (any logged-in user)
+router.patch('/:id/feedback', protect, submitFeedback);
 
 export default router;

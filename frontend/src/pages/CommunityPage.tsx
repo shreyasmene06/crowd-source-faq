@@ -41,6 +41,7 @@ function PostDetailDialog({ post: initialPost, onClose, currentUserId, userRole 
   const [resolveText, setResolveText] = useState('');
   const [showResolveForm, setShowResolveForm] = useState(false);
   const [resolveLoading, setResolveLoading] = useState(false);
+  const [expertHelpLoading, setExpertHelpLoading] = useState(false);
 
   const isAnswered = post.status === 'answered';
   const upvoteCount = (post.upvotes?.length ?? 0);
@@ -122,6 +123,19 @@ function PostDetailDialog({ post: initialPost, onClose, currentUserId, userRole 
       console.error(e);
     } finally {
       setResolveLoading(false);
+    }
+  };
+
+  const handleRequestExpertHelp = async () => {
+    if (expertHelpLoading) return;
+    setExpertHelpLoading(true);
+    try {
+      await api.post(`/community/${post._id}/request-expert`);
+      setPost((prev) => ({ ...prev, _expertHelpRequested: true } as any));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setExpertHelpLoading(false);
     }
   };
 
@@ -216,15 +230,36 @@ function PostDetailDialog({ post: initialPost, onClose, currentUserId, userRole 
                 Mark as Resolved
               </Button>
             )}
+
+            {!canResolve && !isAnswered && currentUserId && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRequestExpertHelp}
+                loading={expertHelpLoading}
+                className="ml-auto"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M6 1L7.5 4.5H11.5L8.5 7.5L9.5 11L6 8.5L2.5 11L3.5 7.5L0.5 4.5H4.5L6 1Z"/>
+                </svg>
+                Request Expert Help
+              </Button>
+            )}
           </div>
 
           {isAnswered && post.answer && (
-            <div className="mx-6 mb-4 rounded-xl bg-success-light border border-success/20 p-4">
-              <p className="text-xs font-semibold text-success mb-2 uppercase tracking-wide flex items-center gap-1.5">
+            <div className={`mx-6 mb-4 rounded-xl border p-4 ${
+              post.answerIsExpert
+                ? 'bg-amber-light border-amber/20'
+                : 'bg-success-light border-success/20'
+            }`}>
+              <p className={`text-xs font-semibold mb-2 uppercase tracking-wide flex items-center gap-1.5 ${
+                post.answerIsExpert ? 'text-amber' : 'text-success'
+              }`}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                   <path d="M6 0L7.5 4.5H12L8.5 7L9.8 11.5L6 8.5L2.2 11.5L3.5 7L0 4.5H4.5L6 0Z"/>
                 </svg>
-                Official Answer
+                {post.answerIsExpert ? '⭐ Expert Mentor Answer' : 'Official Answer'}
               </p>
               <p className="text-sm text-ink/75 leading-relaxed">{post.answer}</p>
             </div>
@@ -627,7 +662,7 @@ export default function CommunityPage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  // If navigated here via ?ask=true (from navbar "Ask Question"), open the create dialog
+  // If navigated here via ?ask=true (from navbar "Ask Question") or ?post=<id> (from search)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('ask') === 'true') {
@@ -635,7 +670,17 @@ export default function CommunityPage() {
       // Clean the URL param so refresh doesn't re-trigger
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+    const postId = params.get('post');
+    if (postId) {
+      // Find the post in the already-loaded posts or fetch it
+      const found = posts.find((p) => p._id === postId);
+      if (found) {
+        setSelectedPost(found);
+      }
+      // Clean the URL param so refresh doesn't re-trigger
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [posts]);
 
   const fetchPosts = useCallback((pageNum = 1) => {
     if (pageNum === 1) setLoading(true);

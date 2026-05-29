@@ -727,6 +727,28 @@ export default function FAQPage() {
   ), [categories, grouped]);
 
   useEffect(() => {
+    // Check for pre-selected FAQ from HomePage search navigation
+    const highlightStr = sessionStorage.getItem('yaksha_faq_highlight');
+    if (highlightStr) {
+      try {
+        const highlight = JSON.parse(highlightStr) as FAQItem;
+        sessionStorage.removeItem('yaksha_faq_highlight');
+        // Find the category this FAQ belongs to and set it
+        const category = highlight.category || '';
+        if (category && grouped[category]) {
+          const found = grouped[category].find((item) => item._id === highlight._id);
+          if (found) {
+            setActiveQuestion({ ...found, category });
+            setActiveCategory(category);
+          }
+        }
+      } catch {
+        sessionStorage.removeItem('yaksha_faq_highlight');
+      }
+    }
+  }, [grouped]);
+
+  useEffect(() => {
     setVisibleCount(8);
   }, [activeCategory, searchResults, searchQuery]);
 
