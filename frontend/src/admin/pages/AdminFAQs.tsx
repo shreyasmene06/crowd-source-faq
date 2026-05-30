@@ -36,7 +36,14 @@ export default function AdminFAQs() {
   const [editModal, setEditModal] = useState(false);
   const [editFaq, setEditFaq] = useState<FAQ | null>(null);
   const [addModal, setAddModal] = useState(false);
-  const [newFaq, setNewFaq] = useState({ question: '', answer: '', category: '', status: 'approved' as const, freshnessTier: 'evergreen' as const, reviewIntervalDays: 0 });
+  const [newFaq, setNewFaq] = useState<{
+    question: string;
+    answer: string;
+    category: string;
+    status: FAQ['status'];
+    freshnessTier: 'evergreen' | 'seasonal' | 'volatile';
+    reviewIntervalDays: number;
+  }>({ question: '', answer: '', category: '', status: 'approved', freshnessTier: 'evergreen', reviewIntervalDays: 0 });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const debouncedSearch = useDebounce(search, 350);

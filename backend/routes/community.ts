@@ -4,18 +4,20 @@ import {
   getPostById,
   createPost,
   toggleUpvote,
-  addComment,
   resolvePost,
   deletePost,
-  toggleCommentUpvote,
-  toggleCommentDownvote,
-  verifyComment,
   getSolvedPosts,
-  getAnswersList,
   requestExpertHelp,
   reportPost,
   checkDuplicateController,
-} from '../controllers/communityController.js';
+} from '../controllers/postController.js';
+import {
+  getAnswersList,
+  addComment,
+  toggleCommentUpvote,
+  toggleCommentDownvote,
+  verifyComment,
+} from '../controllers/commentController.js';
 import { searchCommunityPosts } from '../controllers/communitySearchController.js';
 import { getReviewQueue } from '../controllers/freshnessController.js';
 import { protect, authorize } from '../middleware/auth.js';

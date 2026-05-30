@@ -49,7 +49,7 @@ function UserDetailModal({ user, onClose, onRefresh }: { user: AdminUser; onClos
               </div>
             </div>
             <div className="flex flex-col items-end gap-1.5">
-              <Badge status={user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'moderator' : user.role === 'ai_moderator' ? 'ai_moderator' : 'user'} label={user.role} />
+              <Badge status={user.role === 'admin' ? 'admin' : user.role === 'moderator' ? 'moderator' : user.role === 'ai_moderator' ? 'moderator' : 'user'} label={user.role} />
               {user.isBanned && <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">BANNED</span>}
               {user.suspendedUntil && new Date(user.suspendedUntil) > new Date() && <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">SUSPENDED</span>}
             </div>

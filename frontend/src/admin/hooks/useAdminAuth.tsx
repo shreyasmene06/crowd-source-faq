@@ -10,7 +10,7 @@ export const useAdminAuth = (): AdminAuthValue => {
   if (!ctx) throw new Error('useAdminAuth must be used within AuthProvider');
 
   const user = ctx.user as User | null;
-  const isAdmin = !!(user && ['admin', 'moderator'].includes(user.role));
+  const isAdmin = !!(user && ['admin', 'moderator'].includes(user.role || ''));
 
   return {
     ...ctx,

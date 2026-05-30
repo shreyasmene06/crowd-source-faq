@@ -267,7 +267,7 @@ export default function HomePage() {
 
   const popularItems = trending.length
     ? trending
-    : fallbackPopular.map((item) => ({ query: item }));
+    : fallbackPopular.map((item) => ({ query: item, count: undefined }));
 
   const matchingResults = Array.isArray(results) ? results : [];
 
@@ -352,6 +352,7 @@ export default function HomePage() {
               onQueryChange={handleQueryChange}
               onResults={setResults}
               onLoading={setLoading}
+              disableSuggestions={true}
             />
 
             {showDropdown && (

@@ -28,7 +28,7 @@ interface SearchBarChartProps {
 
 export default function SearchBarChart({ data = [] }: SearchBarChartProps) {
   const chartData = data.slice(0, 8).map(d => ({
-    term: d.term?.slice(0, 14) + (d.term?.length > 14 ? '…' : ''),
+    term: d.term ? (d.term.slice(0, 14) + (d.term.length > 14 ? '…' : '')) : '',
     count: d.count,
     full: d.term,
   }));

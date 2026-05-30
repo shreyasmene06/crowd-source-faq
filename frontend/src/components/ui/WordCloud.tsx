@@ -80,7 +80,7 @@ export default function WordCloud({ words = [], onWordClick, maxWords = 40 }: Wo
             color: word.color,
             fontWeight: word.weight,
             '--rotation': `${word.rotation}deg`,
-          }}
+          } as React.CSSProperties & { '--rotation': string }}
           title={`"${word.query}" — ${word.count} searches`}
         >
           {word.query}

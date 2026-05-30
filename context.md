@@ -36,60 +36,72 @@
 shamagama/
 ├── backend/
 │   ├── config/
-│   │   └── db.js                  # Lazy MongoDB connection (cached across requests)
+│   │   └── db.ts                  # Lazy MongoDB connection (cached across requests)
 │   ├── controllers/
-│   │   ├── adminController.js     # Dashboard stats, FAQ/user/reports management
-│   │   ├── analyticsController.js # Search analytics (failed/popular queries)
-│   │   ├── authController.js      # Register, login, getMe, role management
-│   │   ├── communityController.js # CRUD for posts, upvotes, comments, resolve
-│   │   ├── communitySearchController.js # Community-specific semantic search
-│   │   ├── faqController.js       # FAQ CRUD + check-match (dedup)
-│   │   └── searchController.js    # Hybrid search (vector + text, RRF merge)
+│   │   ├── adminController.ts     # Dashboard stats, FAQ/user/reports management
+│   │   ├── analyticsController.ts # Search analytics (failed/popular queries)
+│   │   ├── authController.ts      # Register, login, getMe, role management
+│   │   ├── postController.ts      # CRUD for community posts, upvotes, resolve, duplicate check
+│   │   ├── commentController.ts   # Comment creation, upvotes/downvotes, verify comment
+│   │   ├── communitySearchController.ts # Community-specific semantic search
+│   │   ├── faqController.ts       # FAQ CRUD + check-match (dedup)
+│   │   └── searchController.ts    # Hybrid search (vector + text, RRF merge)
 │   ├── middleware/
-│   │   ├── admin.js               # adminOnly middleware (admin/moderator only)
-│   │   └── auth.js                # protect + authorize() RBAC middleware
+│   │   ├── admin.ts               # adminOnly middleware (admin/moderator only)
+│   │   └── auth.ts                # protect + authorize() RBAC middleware
 │   ├── models/
-│   │   ├── AdminLog.js            # Admin action audit log (approve/reject/edit/delete)
-│   │   ├── CommunityPost.js       # Community posts + embedded comments sub-schema
-│   │   ├── FAQ.js                 # FAQs with embedding field (select: false)
-│   │   ├── SearchLog.js           # Search analytics log (TTL: 90 days)
-│   │   └── User.js                # Users with bcrypt pre-save hook
+│   │   ├── AdminLog.ts            # Admin action audit log (approve/reject/edit/delete)
+│   │   ├── CommunityPost.ts       # Community posts + embedded comments sub-schema
+│   │   ├── FAQ.ts                 # FAQs with embedding field (select: false)
+│   │   ├── SearchLog.ts           # Search analytics log (TTL: 90 days)
+│   │   └── User.ts                # Users with bcrypt pre-save hook
 │   ├── routes/
-│   │   ├── admin.js               # All /api/admin/* admin-only routes
-│   │   ├── analytics.js           # /api/analytics (admin/mod only)
-│   │   ├── auth.js                # /api/auth/* public + protected routes
-│   │   ├── community.js           # /api/community/* routes
-│   │   ├── faq.js                 # /api/faq/* routes (incl. /faq/paginated)
-│   │   └── search.js              # /api/search/* routes
+│   │   ├── admin.ts               # All /api/admin/* admin-only routes
+│   │   ├── analytics.ts           # /api/analytics (admin/mod only)
+│   │   ├── auth.ts                # /api/auth/* public + protected routes
+│   │   ├── community.ts           # /api/community/* routes
+│   │   ├── faq.ts                 # /api/faq/* routes (incl. /faq/paginated)
+│   │   └── search.ts              # /api/search/* routes
 │   ├── scripts/
-│   │   ├── addIndexes.js          # Migration: creates TTL + compound indexes
-│   │   ├── backfillEmbeddings.js  # Regenerate all stored embeddings via OpenAI
-│   │   ├── seed.js                # Seeds users + FAQs + community posts
-│   │   └── seedPosts.js           # Additional community post seeder
+│   │   ├── addIndexes.ts          # Migration: creates TTL + compound indexes
+│   │   ├── backfillEmbeddings.ts  # Regenerate all stored embeddings via OpenAI
+│   │   ├── seed.ts                # Seeds users + FAQs + community posts
+│   │   └── seedPosts.ts           # Additional community post seeder
 │   ├── utils/
-│   │   └── embeddings.js          # OpenAI embedding generator (text-embedding-3-small)
-│   ├── server.js                  # Express app entry point
+│   │   └── embeddings.ts          # OpenAI embedding generator (text-embedding-3-small)
+│   ├── server.ts                  # Express app entry point
 │   ├── package.json
 │   └── .env.example
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── community/         # Decomposed Community components
+│   │   │   │   ├── CreatePostDialog.tsx # Post submission dialog with duplicate detection
+│   │   │   │   └── PostDetailDialog.tsx # Full post details & comments dialog
+│   │   │   ├── faq/               # Decomposed FAQ page sub-components
+│   │   │   │   ├── CategoryGrid.tsx     # FAQ category cards browser
+│   │   │   │   ├── QuestionDetail.tsx   # Detailed FAQ view with related queries
+│   │   │   │   ├── QuestionList.tsx     # FAQ question items accordion/list
+│   │   │   │   ├── ReportFAQButton.tsx  # Inappropriate FAQ report button & dialog
+│   │   │   │   ├── SearchDropdown.tsx   # FAQ search bar autocomplete dropdown
+│   │   │   │   ├── SearchFeedback.tsx   # Report missing FAQ modal/inline form
+│   │   │   │   └── faqUtils.tsx         # Common types, icons & helpers for FAQ components
 │   │   │   ├── layout/
-│   │   │   │   ├── Navbar.jsx
-│   │   │   │   └── Footer.jsx
+│   │   │   │   ├── Navbar.tsx
+│   │   │   │   └── Footer.tsx
 │   │   │   └── ui/                # 20+ UI components (SearchBar, FAQAccordion, etc.)
 │   │   ├── hooks/
-│   │   │   └── useAuth.jsx        # Auth context + JWT persistence
+│   │   │   └── useAuth.tsx        # Auth context + JWT persistence
 │   │   ├── pages/
-│   │   │   ├── AdminPage.jsx      # Admin dashboard (analytics, FAQ/社区/user tabs)
-│   │   │   ├── CommunityPage.jsx  # Community Q&A board + post dialogs
-│   │   │   ├── FAQPage.jsx        # Category browser + FAQ search + detail view
-│   │   │   ├── HomePage.jsx       # Hero search + trending + category grid
-│   │   │   ├── LoginPage.jsx
-│   │   │   └── RegisterPage.jsx
+│   │   │   ├── AdminPage.tsx      # Admin dashboard (analytics, FAQ/社区/user tabs)
+│   │   │   ├── CommunityPage.tsx  # Community Q&A board
+│   │   │   ├── FAQPage.tsx        # Decomposed FAQ category browser & search
+│   │   │   ├── HomePage.tsx       # Hero search + trending + category grid
+│   │   │   ├── LoginPage.tsx
+│   │   │   └── RegisterPage.tsx
 │   │   ├── utils/
-│   │   │   ├── api.js             # Axios instance with JWT interceptor
-│   │   └── App.jsx / main.jsx
+│   │   │   ├── api.ts             # Axios instance with JWT interceptor
+│   │   └── App.tsx / main.tsx
 │   ├── index.html
 │   ├── package.json
 │   └── .env.example
@@ -410,3 +422,35 @@ npm run backfill:embeddings  # Regenerate stored embeddings (if switching models
 | select:false | Mongoose option that excludes a field from default queries (privacy + perf) |
 | LRU | Least Recently Used — cache eviction strategy |
 | RRF_K | Constant in RRF formula controlling rank smoothing (k=60 is standard) |
+
+---
+
+## 15. Modular Refactoring Details (v0.3)
+
+In Version 0.3, monolithic controllers and pages were split into focused, single-responsibility files to enhance code maintainability and layout clarity.
+
+### 15.1 Backend Controller Split
+The original `communityController.ts` grew too large and covered two distinct sets of database operations (Posts and Comments). It was split into:
+- **`postController.ts`**:
+  - Manages posts collection queries (`getAllPosts`, `getPostById`, `createPost`, `getSolvedPosts`).
+  - Handles post interaction and moderation (`toggleUpvote`, `resolvePost`, `deletePost`, `reportPost`).
+  - Implements duplicate detection (`checkDuplicateController`) using vector search similarity to check if the question matches an existing FAQ.
+- **`commentController.ts`**:
+  - Manages the embedded comments array inside the post schema.
+  - Handles comment interactions (`addComment`, `toggleCommentUpvote`, `toggleCommentDownvote`).
+  - Controls verified comment status (`verifyComment`) where moderators flag top responses.
+
+### 15.2 FAQ Page Decomposition
+To improve readability and simplify state management, the monolithic `FAQPage.tsx` was decomposed into modular components in `components/faq/`:
+- **`faqUtils.tsx`**: Holds centralized static icons, TypeScript interfaces (`FAQItem`, `SearchResult`, `FAQCategory`), and helper utilities.
+- **`SearchDropdown.tsx`**: Renders suggestions autocomplete dropdown as the user types queries in the search bar.
+- **`SearchFeedback.tsx`**: Provides a modal letting users submit questions when they can't find relevant answers.
+- **`ReportFAQButton.tsx`**: A moderation component attached to FAQs to allow users to flag incorrect content.
+- **`CategoryGrid.tsx`**: Renders the visual category navigation grid.
+- **`QuestionList.tsx`**: Displays the accordion list of questions in the active category.
+- **`QuestionDetail.tsx`**: Renders a comprehensive individual FAQ page detail view with a related queries side panel.
+
+### 15.3 Community Page Dialogs Extraction
+The dialogs for creating posts and viewing detailed discussions were extracted into `components/community/`:
+- **`CreatePostDialog.tsx`**: Renders the modal form to submit a new question, including automated checks for existing FAQ duplicates.
+- **`PostDetailDialog.tsx`**: Contains the full discussion view with thread details, voting states, and nested comments.

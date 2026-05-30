@@ -35,6 +35,7 @@ function BellIcon({ hasUnread }: { hasUnread: boolean }) {
 }
 
 export default function NotificationBell() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'general' | 'tea'>('general');

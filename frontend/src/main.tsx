@@ -8,7 +8,7 @@ import './styles/index.css';
 
 // 1. Locate the empty '<div id="root"></div>' in your public/index.html file
 // 2. Initialize the modern React 18 concurrent rendering engine
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   // StrictMode highlights potential problems by double-rendering components in development mode
   <React.StrictMode>
     <App />

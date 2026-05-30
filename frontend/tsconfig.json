@@ -21,6 +21,8 @@
     "allowJs": false,
 
     "baseUrl": "./",
+    "ignoreDeprecations": "6.0",
+    "types": ["vite/client", "vitest/globals"],
     "paths": {
       "@/*": ["src/*"]
     }

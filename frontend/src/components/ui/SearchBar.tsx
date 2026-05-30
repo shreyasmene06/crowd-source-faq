@@ -18,6 +18,7 @@ interface SearchBarProps {
   onFocus?: () => void;
   onBlur?: () => void;
   className?: string;
+  disableSuggestions?: boolean;
 }
 
 const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function SearchBar(
@@ -30,6 +31,7 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
     onFocus,
     onBlur,
     className = '',
+    disableSuggestions = false,
   },
   ref
 ) {
@@ -85,8 +87,10 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
     }
 
     // Suggestion debounce (300ms)
-    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
-    suggestDebounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+    if (!disableSuggestions) {
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+      suggestDebounceRef.current = setTimeout(() => fetchSuggestions(val), 300);
+    }
 
     // Search debounce (600ms)
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -95,8 +99,10 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
       setShowSuggestions(false);
     } else {
       onResults(null);
-      setSuggestions([]);
-      setShowSuggestions(false);
+      if (!disableSuggestions) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
     }
   };
 
@@ -166,7 +172,7 @@ const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(function Se
         </button>
 
         {/* Suggestions dropdown */}
-        {showSuggestions && suggestions.length > 0 && (
+        {!disableSuggestions && showSuggestions && suggestions.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-border rounded-2xl shadow-[0_14px_34px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
             {suggestions.map((s) => (
               <button

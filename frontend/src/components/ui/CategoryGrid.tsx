@@ -153,8 +153,8 @@ export default function CategoryGrid({
           className="flex-1 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide scroll-smooth"
         >
           {categories.map((cat) => {
-            const isActive = activeCategory
-              && activeCategory.toLowerCase() === cat.name.toLowerCase();
+            const isActive = !!(activeCategory
+              && activeCategory.toLowerCase() === cat.name.toLowerCase());
             return (
               <button
                 key={cat.name}
