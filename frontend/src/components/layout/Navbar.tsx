@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Home', to: '/' },
   { label: 'FAQ', to: '/faq' },
   { label: 'Community', to: '/community' },
+  { label: 'Saved', to: '/saved' },
   { label: 'Leaderboard', to: '/leaderboard' },
 ];
 
