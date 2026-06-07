@@ -6,6 +6,8 @@ import AdminLog from '../models/AdminLog.js';
 import CommunityPost from '../models/CommunityPost.js';
 import { invalidateCache } from '../utils/cache.js';
 import { sanitizeHtml } from '../utils/sanitize.js';
+import FreshReviewVote from '../models/FreshReviewVote.js';
+import { generateEmbedding } from '../utils/embeddings.js';
 
 export const logAction = async (
   adminId: string,
@@ -273,27 +275,50 @@ export const rejectFAQ = async (req: Request, res: Response): Promise<void> => {
 // PUT /api/admin/faq/:id
 export const updateFAQ = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { question, answer, category, status } = req.body as {
+    const { question, answer, category, status, tags } = req.body as {
       question?: string;
       answer?: string;
       category?: string;
       status?: string;
+      tags?: string[];
     };
-    const faq = await FAQ.findByIdAndUpdate(
-      req.params.id,
-      {
-        ...(question && { question: sanitizeHtml(question) }),
-        ...(answer && { answer: sanitizeHtml(answer) }),
-        ...(category && { category: sanitizeHtml(category) }),
-        ...(status && { status }),
-      },
-      { new: true, runValidators: true }
-    ).select('-embedding');
 
+    const faq = await FAQ.findById(req.params.id);
     if (!faq) {
       res.status(404).json({ message: 'FAQ not found.' });
       return;
     }
+
+    if (question) faq.question = sanitizeHtml(question);
+    if (answer) faq.answer = sanitizeHtml(answer);
+    if (category) faq.category = sanitizeHtml(category);
+    if (status) faq.status = status as any;
+    if (tags) faq.tags = tags;
+
+    // Recalculate embedding if key fields updated
+    if (question || answer || category) {
+      faq.embedding = await generateEmbedding(
+        `Section: ${faq.category}. Question: ${faq.question}. Answer: ${faq.answer}`
+      );
+    }
+
+    // Admin edit while under review = re-verification
+    if (faq.reviewStatus === 'pending_review' || faq.reviewStatus === 'update_requested') {
+      const newCycle = faq.reviewCycle + 1;
+      faq.reviewStatus = 'verified';
+      faq.lastVerifiedDate = new Date();
+      faq.flaggedAt = null;
+      faq.flagType = null;
+      faq.flagReason = null;
+      faq.flaggedBy = null;
+      faq.reviewCycle = newCycle;
+      faq.reports = [];
+      await FreshReviewVote.deleteMany({ faqId: faq._id });
+    } else {
+      faq.reports = [];
+    }
+
+    await faq.save();
     await logAction(req.user!._id.toString(), 'edit_faq', faq._id.toString(), 'faq', faq.question);
 
     // Invalidate search cache so updated FAQ reflects immediately

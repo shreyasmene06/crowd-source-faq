@@ -1,0 +1,17 @@
+[
+  {
+    "question": "How do I request an NOC document for college?",
+    "answer": "You can request an NOC by submitting the NOC form on the student dashboard. It takes about 2 days.",
+    "category": "NOC"
+  },
+  {
+    "question": "What is the policy for internship extension?",
+    "answer": "Internship extensions must be requested at least 2 weeks before the official end date.",
+    "category": "Internship"
+  },
+  {
+    "question": "How do I request leave during the internship?",
+    "answer": "You can request leave by informing your mentor and submitting a request through the HR portal.",
+    "category": "General"
+  }
+]

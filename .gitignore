@@ -177,3 +177,7 @@ server-debug.log
 frontend/vite.config.ts.timestamp-*
 *.mjs
 
+# E2E Test Outputs
+tests/results/
+tests/reports/
+

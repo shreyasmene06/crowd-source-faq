@@ -532,20 +532,13 @@ export async function getPromotionQueue(req: Request, res: Response): Promise<vo
     const page = Math.max(1, parseInt(String(req.query.page ?? '1')));
     const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? '20'))));
 
+    // 1. Fetch eligible community posts
     const posts = await CommunityPost.find({
       'lifecycle.status': { $in: ['ai_validated', 'community_accepted'] },
       'lifecycle.communityAcceptedAt': { $ne: null },
     })
       .populate('author', 'name')
-      .sort({ 'lifecycle.communityAcceptedAt': -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
       .select('-embedding');
-
-    const total = await CommunityPost.countDocuments({
-      'lifecycle.status': { $in: ['ai_validated', 'community_accepted'] },
-      'lifecycle.communityAcceptedAt': { $ne: null },
-    });
 
     const postIds = posts.map(p => p._id);
     const existingFaqs = await FAQ.find({ sourceCommunityPostId: { $in: postIds } })
@@ -553,7 +546,7 @@ export async function getPromotionQueue(req: Request, res: Response): Promise<vo
       .lean();
     const faqMap = new Map(existingFaqs.map(f => [f.sourceCommunityPostId?.toString() ?? '', f]));
 
-    const queue = posts.map(p => {
+    const mappedPosts = posts.map(p => {
       const postObj = p.toObject() as unknown as Record<string, unknown>;
       const existingFaq = faqMap.get(p._id.toString());
       return {
@@ -566,10 +559,56 @@ export async function getPromotionQueue(req: Request, res: Response): Promise<vo
         statusHistory: p.lifecycle?.statusHistory ?? [],
         upvotes: p.upvotes?.length ?? 0,
         commentCount: p.comments?.length ?? 0,
+        isReportedFAQ: false,
       };
     });
 
-    res.json({ queue, total, page, limit });
+    // 2. Fetch reported/flagged FAQs that need review
+    const reportedFaqs = await FAQ.find({
+      reviewStatus: { $in: ['pending_review', 'update_requested'] },
+    })
+      .populate('createdBy', 'name')
+      .select('-embedding')
+      .lean();
+
+    const mappedFaqs = reportedFaqs.map((f: any) => ({
+      _id: f._id.toString(),
+      title: f.question,
+      body: f.flagReason || (f.reports && f.reports.length > 0 ? f.reports.map((r: any) => r.reason).join('\n') : 'Flagged as outdated.'),
+      answer: f.answer,
+      tags: f.tags || [],
+      author: f.createdBy ? { name: f.createdBy.name } : { name: 'System' },
+      upvotes: f.helpfulVotes ?? 0,
+      commentCount: f.reports ? f.reports.length : 0,
+      communityAcceptedAt: f.flaggedAt || f.updatedAt || f.createdAt,
+      lifecycle: {
+        status: f.reviewStatus === 'update_requested' ? 'update_requested' : 'pending_review',
+        communityAcceptedAt: f.flaggedAt || f.updatedAt || f.createdAt,
+        statusHistory: [],
+      },
+      aiGeneratedFaq: null,
+      existingFaq: {
+        _id: f._id.toString(),
+        trustLevel: f.trustLevel || 'high',
+      },
+      isReportedFAQ: true,
+      reports: f.reports || [],
+      promotedAt: f.promotedAt,
+    }));
+
+    // 3. Combine and sort
+    const combinedQueue = [...mappedPosts, ...mappedFaqs];
+    combinedQueue.sort((a, b) => {
+      const dateA = new Date(a.communityAcceptedAt || 0).getTime();
+      const dateB = new Date(b.communityAcceptedAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    const total = combinedQueue.length;
+    const startIndex = (page - 1) * limit;
+    const paginatedQueue = combinedQueue.slice(startIndex, startIndex + limit);
+
+    res.json({ queue: paginatedQueue, total, page, limit });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: (error as Error).message });
   }

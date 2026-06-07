@@ -218,6 +218,63 @@ export class AiClient {
       model?: string;
     }
   ): Promise<AIResult> {
+    if (process.env.NODE_ENV === 'test') {
+      if (feature === 'knowledgeExtraction') {
+        return {
+          content: JSON.stringify({
+            insights: [
+              {
+                question: 'How do I request an NOC?',
+                answer: 'You can request an NOC by submitting the NOC form on the student dashboard.',
+                category: 'Administrative',
+                tags: ['NOC', 'docs'],
+                confidenceScore: 0.9,
+                hallucinationFlags: [],
+                grammarIssues: [],
+              }
+            ]
+          }),
+          provider: 'openai',
+          model: 'gpt-4o',
+          tokensUsed: 100,
+          estimatedCost: 0,
+        };
+      }
+      if (feature === 'duplicateDetection') {
+        return {
+          content: JSON.stringify({ isDuplicate: false, matches: [] }),
+          provider: 'openai',
+          model: 'gpt-4o',
+          tokensUsed: 50,
+          estimatedCost: 0,
+        };
+      }
+      if (feature === 'faqGeneration') {
+        return {
+          content: JSON.stringify({
+            question: 'Mock Question?',
+            answer: 'Mock Answer.',
+            category: 'Mock Category',
+            tags: ['mock'],
+            confidenceScore: 0.95,
+            hallucinationFlags: [],
+            grammarIssues: [],
+          }),
+          provider: 'openai',
+          model: 'gpt-4o',
+          tokensUsed: 100,
+          estimatedCost: 0,
+        };
+      }
+      return {
+        content: 'This is a mock AI response for testing.',
+        provider: 'openai',
+        model: 'gpt-4o',
+        tokensUsed: 50,
+        estimatedCost: 0,
+      };
+    }
+
     const { resolveProviderAsync, getModelForProvider } = await import('../utils/aiProvider.js');
     const { default: AiConfig } = await import('../models/AiConfig.js');
 

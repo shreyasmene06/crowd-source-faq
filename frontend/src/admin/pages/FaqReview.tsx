@@ -41,6 +41,8 @@ const lifecycleConfig: Record<string, { label: string; class: string }> = {
   ai_validated:       { label: 'AI Validated', class: 'bg-purple-50 text-purple-700 border-purple-200' },
   admin_accepted:     { label: 'Admin Approved', class: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
   converted_to_faq:   { label: 'Official FAQ', class: 'bg-stone-100 text-stone-700 border-stone-300' },
+  pending_review:     { label: 'Pending Review', class: 'bg-amber-50 text-amber-700 border-amber-200' },
+  update_requested:   { label: 'Update Requested', class: 'bg-red-50 text-red-700 border-red-200' },
 };
 
 const trustConfig: Record<string, { label: string; class: string }> = {
@@ -96,14 +98,19 @@ export default function FaqReview() {
   async function handleApprove(item: QueueItem) {
     setActioning(item._id);
     try {
-      // Approve existing FAQ or promote to expert then official
-      const faqId = item.existingFaq?._id;
-      if (faqId) {
-        await adminApi.post(`/admin/faqs/${faqId}/promote`, { targetLevel: 'expert' });
-        await adminApi.post(`/admin/faqs/${faqId}/promote`, { targetLevel: 'high' });
+      if ((item as any).isReportedFAQ) {
+        // reported FAQ re-verification
+        await adminApi.put(`/admin/faq/${item._id}`, {});
       } else {
-        // Create FAQ from post then promote
-        await adminApi.post(`/admin/community-promotions/${item._id}/ai-review`);
+        // Approve existing FAQ or promote to expert then official
+        const faqId = item.existingFaq?._id;
+        if (faqId) {
+          await adminApi.post(`/admin/faqs/${faqId}/promote`, { targetLevel: 'expert' });
+          await adminApi.post(`/admin/faqs/${faqId}/promote`, { targetLevel: 'high' });
+        } else {
+          // Create FAQ from post then promote
+          await adminApi.post(`/admin/community-promotions/${item._id}/ai-review`);
+        }
       }
       await loadQueue(page);
     } catch (e) { console.warn(friendlyError(e, 'Approve failed.')); }
@@ -204,10 +211,15 @@ export default function FaqReview() {
                   return (
                     <tr key={item._id} className="border-b border-border/50 hover:bg-cream/50 transition-colors">
                       <td className="py-3 px-4 max-w-xs">
-                        <div className="font-medium text-ink truncate">{item.title}</div>
+                        <div className="font-medium text-ink truncate" title={item.title}>{item.title}</div>
                         <div className="text-xs text-ink-faint mt-0.5 truncate">
-                          by {item.author?.name ?? 'unknown'} · {item.upvotes} upvotes
+                          by {item.author?.name ?? 'unknown'} · {(item as any).isReportedFAQ ? `${item.commentCount} report(s)` : `${item.upvotes} upvotes`}
                         </div>
+                        {(item as any).isReportedFAQ && item.body && (
+                          <div className="text-xs text-red-600 bg-red-50/50 rounded-lg p-2 mt-1 border border-red-100/50 break-words whitespace-pre-wrap">
+                            <strong>Reason:</strong> {item.body}
+                          </div>
+                        )}
                         {ai && (
                           <div className="flex gap-1 mt-1 flex-wrap">
                             {(ai.tags ?? []).map(tag => (
@@ -215,26 +227,28 @@ export default function FaqReview() {
                             ))}
                           </div>
                         )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${lcCfg.class}`}>
-                          {lcCfg.label}
-                        </span>
                         {hasDuplicate && (
                           <div className="text-[10px] text-amber-600 mt-0.5">Duplicate flagged</div>
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        {ai ? (
+                        {(item as any).isReportedFAQ ? (
+                          <span className="text-xs text-ink-soft">Reported FAQ</span>
+                        ) : (
+                          <span className={`text-[10px] px-2 py-0.5 rounded border font-medium ${lcCfg.class}`}>
+                            {lcCfg.label}
+                          </span>
+                        )}
+                        {ai && (
                           <div className="flex items-center gap-1">
                             <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                               <div className="h-full bg-purple-500 rounded-full" style={{ width: `${ai.confidenceScore}%` }} />
                             </div>
                             <span className="text-xs text-ink-faint">{ai.confidenceScore}%</span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-amber-500">Pending AI review</span>
                         )}
+                      </td>
+                      <td className="py-3 px-4">
                         {(ai?.hallucinationFlags?.length ?? 0) > 0 && (
                           <div className="text-[10px] text-red-500 mt-0.5">{ai!.hallucinationFlags!.length} hallucination flags</div>
                         )}
@@ -244,18 +258,18 @@ export default function FaqReview() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {item.lifecycle?.status === 'ai_validated' && (
+                          {((item as any).isReportedFAQ || item.lifecycle?.status === 'ai_validated') && (
                             <>
                               <button
                                 onClick={() => handleApprove(item)}
                                 disabled={actioning === item._id}
-                                className="text-xs px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+                                className="text-xs px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50 transition-colors btn-verify-reported"
                               >
-                                {actioning === item._id ? '...' : '✓ Approve'}
+                                {actioning === item._id ? '...' : (item as any).isReportedFAQ ? '✓ Verify' : '✓ Approve'}
                               </button>
                               <button
-                                onClick={() => { setViewItem(item); setEditData(ai ?? { question: item.title, answer: item.answer ?? '', category: 'General', tags: item.tags, confidenceScore: 0, hallucinationFlags: [], grammarIssues: [] }); }}
-                                className="text-xs px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-50 transition-colors"
+                                onClick={() => { setViewItem(item); setEditData(ai ?? { question: item.title, answer: item.answer ?? '', category: (item as any).category || 'General', tags: item.tags || [], confidenceScore: 0, hallucinationFlags: [], grammarIssues: [] }); }}
+                                className="text-xs px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-50 transition-colors btn-edit-reported"
                               >
                                 Edit
                               </button>
@@ -269,18 +283,22 @@ export default function FaqReview() {
                               Merge
                             </button>
                           )}
-                          <button
-                            onClick={() => { setViewItem(item); setEditData(null); }}
-                            className="text-xs px-3 py-1 rounded-lg border border-border hover:bg-cream transition-colors"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={() => setObjectModal(item._id)}
-                            className="text-xs px-3 py-1 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
-                          >
-                            Object
-                          </button>
+                          {!(item as any).isReportedFAQ && (
+                            <>
+                              <button
+                                onClick={() => { setViewItem(item); setEditData(null); }}
+                                className="text-xs px-3 py-1 rounded-lg border border-border hover:bg-cream transition-colors"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => setObjectModal(item._id)}
+                                className="text-xs px-3 py-1 rounded-lg bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
+                              >
+                                Object
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

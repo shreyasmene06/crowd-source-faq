@@ -1,0 +1,15 @@
+{
+  "name": "yaksha-faq-e2e-tests",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "tsx scripts/run-e2e.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.1",
+    "mongodb-memory-server": "^9.2.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "@types/node": "^25.9.1"
+  }
+}

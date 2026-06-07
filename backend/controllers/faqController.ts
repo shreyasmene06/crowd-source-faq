@@ -566,6 +566,11 @@ export const reportFAQ = async (req: Request<{ id: string }, {}, { reason: strin
       reason: reason.trim(),
       createdAt: new Date(),
     });
+    faq.reviewStatus = 'pending_review';
+    faq.flaggedAt = new Date();
+    faq.flagType = 'manual';
+    faq.flagReason = reason.trim();
+    faq.flaggedBy = req.user!._id;
     await faq.save();
 
     res.json({ message: 'Report submitted. Thank you for helping keep the FAQ accurate.' });
