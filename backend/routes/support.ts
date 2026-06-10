@@ -5,11 +5,14 @@ import {
   createSupportRequest,
   listSupportRequests,
   getSupportRequest,
+} from '../controllers/supportRequestsController.js';
+import {
   addSupportFollowUp,
   updateSupportStatus,
-  listGuidance,
-  updateGuidance,
-  getSupportAnalytics,
+} from '../controllers/supportFollowUpController.js';
+import { listGuidance, updateGuidance } from '../controllers/supportGuidanceController.js';
+import { getSupportAnalytics } from '../controllers/supportAnalyticsController.js';
+import {
   listCategories,
   getCategory,
   createCategory,
@@ -18,8 +21,8 @@ import {
   addField,
   updateField,
   archiveField,
-} from '../controllers/supportController.js';
-import { createIdentityLimiter } from '../utils/rateLimit.js';
+} from '../controllers/supportCategoriesController.js';
+import { createIdentityLimiter } from '../utils/auth/rateLimit.js';
 
 const router = Router();
 
