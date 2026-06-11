@@ -127,7 +127,10 @@ export default function FAQPage() {
   const [error, setError] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
   const [activeQuestion, setActiveQuestion] = useState<FAQItem | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('search') || '';
+  });
   const [searchResults, setSearchResults] = useState<FAQItem[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [sortOption, setSortOption] = useState('relevant');

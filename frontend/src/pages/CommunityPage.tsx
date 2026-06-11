@@ -40,7 +40,10 @@ export default function CommunityPage() {
 
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('newest');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('search') || '';
+  });
 
   const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);

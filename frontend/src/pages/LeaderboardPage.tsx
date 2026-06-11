@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
@@ -57,6 +58,7 @@ function RankArrow({ rank }: { rank: number }) {
 }
 
 export default function LeaderboardPage() {
+  const navigate = useNavigate();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -157,14 +159,18 @@ export default function LeaderboardPage() {
                     <p className={`text-xl sm:text-2xl font-bold mt-2 ${isFirst ? 'text-warning' : 'text-ink'}`}>{e.points.toLocaleString()}</p>
                     <p className={`text-[10px] -mt-0.5 ${isFirst ? 'text-warning' : 'text-ink-faint'}`}>points</p>
                     <div className="flex justify-around mt-2 pt-2 border-t border-border/40 text-[10px] text-ink-soft">
-                      <button className="flex items-center gap-1 text-ink-faint hover:text-accent transition-colors">
+                      <button 
+                        onClick={() => navigate(`/community?search=${encodeURIComponent(e.name)}`)}
+                        className="flex items-center gap-1 text-ink-faint hover:text-accent transition-colors">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                           <polyline points="22 4 12 14.01 9 11.01"/>
                         </svg>
                         answers
                       </button>
-                      <button className="flex items-center gap-1 text-ink-faint hover:text-accent transition-colors">
+                      <button 
+                        onClick={() => navigate(`/faq?search=${encodeURIComponent(e.name)}`)}
+                        className="flex items-center gap-1 text-ink-faint hover:text-accent transition-colors">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="12" r="10"/>
                           <line x1="12" y1="8" x2="12" y2="12"/>

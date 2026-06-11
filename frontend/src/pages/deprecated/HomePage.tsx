@@ -1,20 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from '../components/layout/Navbar';
-import Footer from '../components/layout/Footer';
-import SearchBar from '../components/search/SearchBar';
-import CategoryGrid, { categoryPills } from '../components/faq/CategoryGrid';
-import TopSolved from '../components/community/TopSolved';
-import TrendingIssues from '../components/search/TrendingIssues';
-import FromMeetings from '../components/faq/FromMeetings';
-import CTA from '../components/ui/CTA';
-import ResultItem, { getConfidenceLevel } from '../components/search/ResultItem';
-import HistoryModal from '../components/faq/HistoryModal';
-import api, { friendlyError } from '../utils/api';
-import { useAuth } from '../hooks/useAuth';
-import { useAuthGate } from '../context/AuthModalContext';
-import type { SearchResult, TrendingQuery } from '../types/ui';
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
+import SearchBar from '../../components/search/SearchBar';
+import CategoryGrid, { categoryPills } from '../../components/faq/CategoryGrid';
+import TopSolved from '../../components/community/TopSolved';
+import TrendingIssues from '../../components/search/TrendingIssues';
+import FromMeetings from '../../components/faq/FromMeetings';
+import CTA from '../../components/ui/CTA';
+import ResultItem, { getConfidenceLevel } from '../../components/search/ResultItem';
+import HistoryModal from '../../components/faq/HistoryModal';
+import api, { friendlyError } from '../../utils/api';
+import { useAuth } from '../../hooks/useAuth';
+import { useAuthGate } from '../../context/AuthModalContext';
+import type { SearchResult, TrendingQuery } from '../../types/ui';
 
 // Hand-drawn doodle decorations
 function DoodleElements(): React.ReactNode {
@@ -154,7 +154,7 @@ export default function HomePage() {
   useEffect(() => {
     let isMounted = true;
     api.get('/search/trending')
-      .then((res) => {
+      .then((res: any) => {
         if (isMounted) setTrending(res.data.trending || []);
       })
       .catch(() => {
@@ -181,7 +181,7 @@ export default function HomePage() {
   const isSearchActive = showResultsPanel && isReadyForResults;
 
   let suggestionItems = normalizedQuery
-    ? categoryPills.filter((cat) => cat.name.toLowerCase().includes(normalizedQuery))
+    ? categoryPills.filter((cat: any) => cat.name.toLowerCase().includes(normalizedQuery))
     : categoryPills.slice(0, 5);
   if (normalizedQuery && suggestionItems.length === 0) {
     suggestionItems = categoryPills.slice(0, 5);
@@ -352,7 +352,7 @@ export default function HomePage() {
                               result={result}
                               expanded={isExpanded}
                               onToggle={() => setExpandedId(isExpanded ? null : resultKey)}
-                              onShowHistory={(id, question) => setHistoryFaq({ id, question })}
+                              onShowHistory={(id: string, question: string) => setHistoryFaq({ id, question })}
                               navigate={navigate}
                             />
                           );
@@ -398,7 +398,7 @@ export default function HomePage() {
                           Suggestions
                         </p>
                         <div className="mt-2 space-y-1">
-                          {suggestionItems.map((cat) => (
+                          {suggestionItems.map((cat: any) => (
                             <button
                               key={cat.name}
                               onClick={() => handleQuickSearch(cat.name)}
