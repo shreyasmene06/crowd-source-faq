@@ -269,6 +269,17 @@ function validateEnv(): void {
     errors.push('JWT_SECRET must be at least 32 characters');
   }
 
+  // v1.68 — H1: recommend (don't require) dedicated secrets for
+  // AES encryption + OAuth state. Falls back to JWT_SECRET when
+  // unset (backwards compat). The warnings tell the operator to
+  // rotate to the new keys when convenient.
+  if (!process.env.ENCRYPTION_MASTER_KEY) {
+    logger.warn('[validateEnv] ENCRYPTION_MASTER_KEY not set — falling back to JWT_SECRET for AES. Add a dedicated key to enable independent rotation.');
+  }
+  if (!process.env.OAUTH_STATE_SECRET) {
+    logger.warn('[validateEnv] OAUTH_STATE_SECRET not set — falling back to JWT_SECRET for OAuth state HMAC. Add a dedicated key to enable independent rotation.');
+  }
+
   // Optional: PORT
   const port = process.env.PORT;
   if (port !== undefined && !/^\d+$/.test(port)) {

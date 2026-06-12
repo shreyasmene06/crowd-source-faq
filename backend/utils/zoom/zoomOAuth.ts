@@ -94,9 +94,12 @@ function decryptToken(encrypted: string): string {
  */
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+// v1.68 — H1: dedicated secret for OAuth state HMAC. Falls back
+// to JWT_SECRET for backwards compat. OAUTH_STATE_SECRET is
+// recommended (rotate independently of JWT signing).
 function getStateSecret(): string {
-  const v = process.env.JWT_SECRET;
-  if (!v) throw new Error('JWT_SECRET required to sign OAuth state');
+  const v = process.env.OAUTH_STATE_SECRET ?? process.env.JWT_SECRET;
+  if (!v) throw new Error('OAUTH_STATE_SECRET (or legacy JWT_SECRET) required to sign OAuth state');
   return v;
 }
 
