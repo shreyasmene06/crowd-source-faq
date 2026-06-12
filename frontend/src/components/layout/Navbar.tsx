@@ -5,7 +5,6 @@ import { useAuthModal, useAuthGate } from '../../context/AuthModalContext';
 import { useFeatureFlag } from '../../context/FeatureFlagContext';
 import { buildTransformedUrl } from '../../hooks/useCloudinaryUpload';
 import NotificationBell from '../../components/notifications/NotificationBell';
-import ThemeToggle from '../../components/ui/ThemeToggle';
 import SpurtiChip from './SpurtiChip';
 
 // v1.65.1 — `xlOnly?: true` flags a nav tab as hidden below the xl
@@ -17,6 +16,7 @@ type NavItem = { label: string; to: string; xlOnly?: true };
 const navItems: NavItem[] = [
   { label: 'Home', to: '/' },
   { label: 'FAQ', to: '/faq' },
+  { label: 'Welcome Package', to: '/welcome' },
   { label: 'Community', to: '/community' },
   { label: 'Leaderboard', to: '/leaderboard' },
 ];
@@ -31,7 +31,55 @@ function getAvatarColor(name?: string): string {
   return colors[Math.abs(hash) % colors.length];
 }
 
+
+type Theme = 'light' | 'dark' | 'system';
+function getSystemTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function applyTheme(theme: Theme) {
+  const t = theme === 'system' ? getSystemTheme() : theme;
+  document.documentElement.setAttribute('data-theme', t);
+  try {
+    localStorage.setItem('theme', theme);
+  } catch {}
+}
+
 export default function Navbar() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'system';
+    const stored = localStorage.getItem('theme');
+    if (stored === 'dark' || stored === 'light') return stored;
+    return 'system';
+  });
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        const next = (e.newValue as Theme) || 'system';
+        setTheme(next);
+        applyTheme(next);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const listener = () => {
+      if (theme === 'system') {
+        document.documentElement.setAttribute('data-theme', mql.matches ? 'dark' : 'light');
+      }
+    };
+    mql.addEventListener('change', listener);
+    return () => mql.removeEventListener('change', listener);
+  }, [theme]);
+
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme);
+    applyTheme(newTheme);
+  };
+
   const { user, isAuthenticated, logout } = useAuth();
   const { openModal } = useAuthModal();
   const navigate = useNavigate();
@@ -56,9 +104,13 @@ export default function Navbar() {
   const goldenExtras: NavItem[] = goldenOn
     ? [{ label: 'Golden', to: '/golden', xlOnly: true as const }]
     : [];
-  const allNavItems: NavItem[] = supportOn
+  let allNavItems: NavItem[] = supportOn
     ? [...navItems, { label: 'Support', to: '/support' }, ...goldenExtras]
     : navItems;
+
+  if (user?.role === 'admin') {
+    allNavItems = allNavItems.filter(item => item.label !== 'Welcome Package');
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -99,50 +151,60 @@ export default function Navbar() {
   const isCommunityActive = location.pathname === '/community';
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-[400ms] ease-smooth
+    <header className="fixed top-2 sm:top-4 left-0 right-0 z-50 px-4 transition-all duration-[400ms] ease-smooth flex justify-center">
+      <div className={`w-full max-w-[1200px] px-4 sm:px-6 h-14 sm:h-16 grid grid-cols-[1fr_auto_1fr] items-center relative rounded-full transition-all duration-[400ms]
         ${scrolled
-          ? 'bg-bg/82 backdrop-blur-[20px] saturate-[1.8] border-b border-black/[0.04] shadow-subtle'
-          : 'bg-transparent border-b border-transparent'
+          ? 'bg-[rgb(var(--bg-card-rgb)_/_0.75)] backdrop-blur-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-[rgb(var(--border-rgb)_/_0.5)] saturate-[1.5]'
+          : 'bg-[rgb(var(--bg-card-rgb)_/_0.4)] backdrop-blur-[12px] border border-[rgb(var(--border-rgb)_/_0.2)] shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
         }`}
-    >
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between relative">
+      >
 
         {/* Logo */}
-        <NavLink to="/" className="flex items-center gap-2.5 group flex-shrink-0">
-          <div className="w-9 h-9 rounded-[10px] border-2 border-ink text-ink flex items-center justify-center transition-transform duration-300 group-hover:rotate-[-6deg]">
+        <div className="flex items-center justify-self-start">
+          <NavLink to="/" className="flex items-center gap-2.5 group w-fit">
+          <div className="w-9 h-9 rounded-[10px] border-2 border-ink text-ink flex items-center justify-center transition-transform duration-300 group-hover:rotate-[-6deg] bg-[rgb(var(--bg-card-rgb)_/_0.5)]">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
           </div>
-          <span className="font-serif text-xl tracking-tight text-ink">
+          <span className="font-sans font-bold tracking-tight text-ink text-xl">
             Yaksha FAQ
           </span>
-        </NavLink>
-
-        {/* Center Pill Group (Desktop) — Floating below to avoid horizontal conflicts */}
-        <div className="hidden lg:flex items-center gap-1.5 px-1.5 py-[5px] rounded-full border-[1.5px] border-border bg-card/80 backdrop-blur-[24px] absolute left-1/2 -translate-x-1/2 top-[calc(100%-8px)] shadow-md transition-all duration-300 hover:bg-card/90">
-          {allNavItems.map(({ label, to, xlOnly }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              className={({ isActive }) =>
-                `nav-pill ${isActive ? 'active' : ''} ${xlOnly ? 'hidden xl:inline-flex' : ''}`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
+          </NavLink>
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-3 lg:gap-4 flex-shrink-0">
+        {/* Center Pill Group (Desktop) */}
+        <div className="justify-self-center">
+          <div className="hidden lg:flex items-center justify-center gap-1.5 px-1.5 py-[5px] rounded-full border-[1.5px] border-[rgb(var(--border-rgb)_/_0.6)] bg-[rgb(var(--bg-card-rgb)_/_0.85)] backdrop-blur-[24px] shadow-md transition-all duration-300 hover:bg-[rgb(var(--bg-card-rgb)_/_0.95)] z-50">
+            {allNavItems.map(({ label, to, xlOnly }) => {
+            const isWelcome = to === '/welcome';
+            const needsPulse = isWelcome && user && !user.orientationCompleted;
 
-          {/* Theme toggle — utility action */}
-          <ThemeToggle />
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/'}
+                className={({ isActive }) =>
+                  `nav-pill relative ${isActive ? 'active' : ''} ${xlOnly ? 'hidden xl:inline-flex' : ''} ${needsPulse && !isActive ? 'animate-pulse text-[rgb(var(--accent-rgb))] shadow-[inset_0_0_15px_rgb(var(--accent-rgb)_/_0.15)] bg-[rgb(var(--accent-rgb)_/_0.05)]' : ''}`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {label}
+                    {needsPulse && !isActive && <span className="absolute -top-1 -right-1 w-2 h-2 bg-[rgb(var(--accent-rgb))] rounded-full animate-ping" />}
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
+          </div>
+        </div>
+
+        {/* Right side actions */}
+        <div className="flex items-center justify-self-end gap-2 sm:gap-3">
 
           {/* Unauthenticated — Sign in (text) + Get started (filled) */}
           {!isAuthenticated && (
@@ -216,7 +278,7 @@ export default function Navbar() {
                   </button>
 
                   {profileOpen && (
-                    <div className="absolute right-0 top-12 w-48 bg-card rounded-xl border border-border shadow-float py-2 animate-fade-in z-50">
+                    <div className="absolute right-0 top-[3.25rem] w-56 bg-[rgb(var(--bg-card-rgb)_/_0.85)] backdrop-blur-[24px] rounded-2xl border border-[rgb(var(--border-rgb)_/_0.5)] shadow-[0_8px_30px_rgba(0,0,0,0.12)] py-2 animate-fade-in z-50">
                       <div className="px-4 py-2 border-b border-border/50">
                         <p className="text-sm font-medium text-ink">{user?.name || 'User'}</p>
                         <p className="text-xs text-ink-faint">{user?.email || ''}</p>
@@ -224,26 +286,55 @@ export default function Navbar() {
                       {(user?.role === 'admin' || user?.role === 'moderator') && (
                         <button
                           onClick={() => { navigate('/admin'); setProfileOpen(false); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors border-b border-border/30"
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors border-b border-[rgb(var(--border-rgb)_/_0.3)]"
                         >
                           Admin Dashboard
                         </button>
                       )}
                       <button
                         onClick={() => { navigate('/account'); setProfileOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors border-b border-border/30"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors border-b border-[rgb(var(--border-rgb)_/_0.3)]"
                       >
                         Account
                       </button>
+                      
                       <button
                         onClick={() => { navigate('/saved'); setProfileOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors border-b border-border/30"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors border-b border-[rgb(var(--border-rgb)_/_0.3)]"
                       >
                         Saved
                       </button>
+
+                      <div className="px-4 py-2.5 border-b border-border/30 cursor-default" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-faint mb-2">Appearance</p>
+                        <div className="flex bg-mist rounded-lg p-1 gap-1">
+                          <button
+                            onClick={() => handleThemeChange('light')}
+                            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${theme === 'light' ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></svg>
+                            Light
+                          </button>
+                          <button
+                            onClick={() => handleThemeChange('dark')}
+                            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${theme === 'dark' ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" /></svg>
+                            Dark
+                          </button>
+                          <button
+                            onClick={() => handleThemeChange('system')}
+                            className={`flex-1 flex flex-col items-center justify-center gap-1 py-1.5 text-[10px] font-medium rounded-md transition-colors ${theme === 'system' ? 'bg-card text-ink shadow-sm' : 'text-ink-soft hover:text-ink'}`}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            System
+                          </button>
+                        </div>
+                      </div>
+
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2.5 text-sm text-ink-soft hover:bg-bg hover:text-ink transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-ink-soft hover:bg-[rgb(var(--bg-card-rgb)_/_0.5)] hover:text-ink transition-colors mt-1"
                       >
                         Sign out
                       </button>

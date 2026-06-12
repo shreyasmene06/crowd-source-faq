@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import CommunityPostCard from '../components/community/CommunityPostCard';
 import ThreadDetail from '../components/community/ThreadDetail';
@@ -72,7 +71,6 @@ export default function SavedKnowledgePage() {
   return (
     <div className="min-h-screen bg-bg grid-bg relative">
       <CommunityDoodles />
-      <Navbar />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 sm:pb-10 relative z-10">
 

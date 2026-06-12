@@ -4,7 +4,7 @@
  * Appends structured log lines to a rolling text file on disk.
  * Log format: [timestamp] [LEVEL] [requestId] message {meta}
  *
- * File location: /Users/yashhwanth/Documents/shamagama/main_log.txt
+ * File location: ../logs/main_log.txt
  * Rolling policy: rename + start new file when size > 50MB.
  */
 
@@ -14,7 +14,7 @@ import { mkdirSync } from 'fs';
 import { getRequestId, getUserId } from './requestContext.js';
 import type { Request, Response } from 'express';
 
-const LOG_DIR = '/Users/yashhwanth/Documents/shamagama';
+const LOG_DIR = path.resolve(process.cwd(), '../logs');
 const LOG_FILE = path.join(LOG_DIR, 'main_log.txt');
 const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
 

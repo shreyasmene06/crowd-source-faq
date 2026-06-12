@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../utils/api';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProfileCard from '../components/account/ProfileCard';
 import PasswordCard from '../components/account/PasswordCard';
@@ -171,8 +170,7 @@ export default function AccountPage() {
   const lastSyncedLabel = formatRelativeTime(zoomStatus?.lastSyncedAt);
 
   return (
-    <div className="min-h-screen bg-bg">
-      <Navbar />
+    <div className="min-h-screen bg-bg text-ink flex flex-col">
       {/* pt-20 / pt-24 clears the fixed Navbar (h-14 on mobile, h-16 on sm+).
           Without it the "Account" heading sits behind the header. */}
       <div className="max-w-xl mx-auto px-4 pt-20 sm:pt-24 pb-8 sm:pb-10 space-y-6">

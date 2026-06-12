@@ -12,7 +12,6 @@ import Footer from '../components/layout/Footer';
 import { BatchSwitcher } from '../components/layout/BatchSwitcher';
 import { useBatch } from '../context/BatchContext';
 import { useCategories, usePopularFaqs, useRecentFaqs } from '../components/explore/usePublicFaqApi';
-import Navbar from '../components/layout/Navbar';
 import InteractiveSearchOverlay from '../components/search/InteractiveSearchOverlay';
 import { ExploreHero } from '../components/explore/ExploreHero';
 import { ExploreSearchResults } from '../components/explore/ExploreSearchResults';
@@ -119,7 +118,6 @@ export default function ExplorePage(): React.ReactElement {
 
   return (
     <div className="min-h-screen bg-bg text-ink flex flex-col">
-      <Navbar />
 
       {/* ─── Sticky search bar (appears once user scrolls) ──────────── */}
       <div
