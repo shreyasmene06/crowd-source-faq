@@ -23,6 +23,7 @@ const NAV: NavGroup[] = [
     label: 'Content',
     items: [
       { to: '/admin/faqs',           label: 'FAQs',          icon: DocIcon },
+      { to: '/admin/welcome',        label: 'Welcome',       icon: SparkleIcon },
       { to: '/admin/batches',        label: 'Programs',      icon: LayersIcon },
       { to: '/admin/faqs/review',    label: 'FAQ Review',    icon: ShieldCheckIcon },
       { to: '/admin/auto-answer',    label: 'AI Answers',    icon: SparkleIcon },
@@ -172,7 +173,7 @@ interface AdminSidebarProps { mobileOpen: boolean; onMobileClose: () => void; }
 export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebarProps) {
   return (
     <>
-      <aside className="hidden lg:flex flex-col w-56 shrink-0 fixed left-0 top-0 h-full z-30 bg-card border-r border-border">
+      <aside className="hidden lg:flex flex-col w-56 shrink-0 fixed left-0 top-20 h-[calc(100vh-5rem)] z-30 bg-card border-r border-border">
         <SidebarContent onMobileClose={onMobileClose} />
       </aside>
       <AnimatePresence>
@@ -182,7 +183,7 @@ export default function AdminSidebar({ mobileOpen, onMobileClose }: AdminSidebar
               className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm lg:hidden" onClick={onMobileClose} />
             <motion.aside initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }}
               transition={{ type: 'tween', duration: 0.2, ease: 'easeOut' }}
-              className="fixed left-0 top-0 h-full w-56 z-50 lg:hidden bg-card border-r border-border">
+              className="fixed left-0 top-20 h-[calc(100vh-5rem)] w-56 z-50 lg:hidden bg-card border-r border-border">
               <SidebarContent onMobileClose={onMobileClose} />
             </motion.aside>
           </>

@@ -101,7 +101,7 @@ export function HomeDoodles() {
 
 export function FAQDoodles() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none mt-12 lg:mt-16" aria-hidden="true">
       <div className="absolute top-[88px] left-[6%] hidden lg:block" style={{ pointerEvents: 'none' }}>
         <svg width="70" height="80" viewBox="0 0 70 80" fill="none" style={{ opacity: 0.28 }}>
           <circle cx="22" cy="50" r="8" stroke="#8a7560" strokeWidth="1.8" fill="none"/>
@@ -183,7 +183,7 @@ export function FAQDoodles() {
 
 export function CommunityDoodles() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none mt-12 lg:mt-16" aria-hidden="true">
       <div className="absolute top-[82px] left-[5%] hidden lg:block" style={{ pointerEvents: 'none' }}>
         <svg width="60" height="80" viewBox="0 0 60 80" fill="none" style={{ opacity: 0.28 }}>
           <circle cx="30" cy="26" r="9" stroke="#8a7560" strokeWidth="1.8" fill="none"/>

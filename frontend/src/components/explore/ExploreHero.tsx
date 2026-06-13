@@ -28,10 +28,12 @@ export function ExploreHero({
 }: ExploreHeroProps): React.ReactElement {
   return (
     <section
-      className="relative pt-8 sm:pt-12 pb-12 text-center"
+      className="relative pt-24 sm:pt-28 pb-12 text-center"
       aria-label="Page header"
     >
-      <HomeDoodles />
+      <div className="absolute inset-0 pointer-events-none mt-12 sm:mt-16">
+        <HomeDoodles />
+      </div>
       
       <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-accent/10 text-accent mb-3 relative z-10">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"

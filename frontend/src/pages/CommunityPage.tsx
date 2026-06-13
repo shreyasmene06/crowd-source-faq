@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import CommunityPostCard from '../components/community/CommunityPostCard';
 import ThreadDetail from '../components/community/ThreadDetail';
@@ -270,9 +269,8 @@ export default function CommunityPage() {
   return (
     <div className="min-h-screen bg-bg grid-bg relative">
       <CommunityDoodles />
-      <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 sm:pb-10 relative z-10">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-8 sm:pb-10 relative z-10">
 
         <div className="flex items-start justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="min-w-0">

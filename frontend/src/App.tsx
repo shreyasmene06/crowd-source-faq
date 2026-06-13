@@ -9,6 +9,7 @@ import Spinner from './components/ui/Spinner';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import AskAIButton from './components/askai/AskAIButton';
 import { FeatureGate } from './components/support/FeatureGate';
+import MainLayout from './components/layout/MainLayout';
 
 // User pages
 const AccountPage = lazy(() => import('./pages/AccountPage'));
@@ -22,6 +23,7 @@ const SupportIndexPage = lazy(() => import('./pages/SupportIndexPage'));
 const NewSupportRequestPage = lazy(() => import('./pages/NewSupportRequestPage'));
 const SupportTicketPage = lazy(() => import('./pages/SupportTicketPage'));
 const GoldenTicketPage = lazy(() => import('./pages/GoldenTicketPage'));
+const WelcomePackagePage = lazy(() => import('./pages/WelcomePackagePage'));
 
 // Admin pages
 // v1.68 — AdminLogin page is gone. The single global AuthModal
@@ -49,6 +51,8 @@ const AdminSupportAnalytics = lazy(() => import('./admin/pages/AdminSupportAnaly
 const AdminSupportCategories = lazy(() => import('./admin/pages/AdminSupportCategories'));
 const AdminGoldenTickets = lazy(() => import('./admin/pages/AdminGoldenTickets'));
 const AdminFeatures = lazy(() => import('./admin/pages/AdminFeatures'));
+const AdminWelcomePage = lazy(() => import('./admin/pages/AdminWelcomePage'));
+const AdminProjectsPage = lazy(() => import('./admin/pages/AdminProjectsPage'));
 const AdminLayout = lazy(() => import('./admin/components/layout/AdminLayout'));
 
 interface AccountRouteProps {
@@ -112,46 +116,50 @@ function AppRoutes() {
   return (
     <>
       <Routes>
-        {/* The public FAQ discovery page is now the base URL — anyone
-            landing on the site gets the no-auth, anonymous-analytics
-            experience. */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/explore/select" element={<BatchPortalPage />} />
-        <Route path="/faq" element={<FAQPage />} />
-        <Route path="/faq/:id" element={<FAQPage />} />
-        <Route path="/community" element={<CommunityPage />} />
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        <Route path="/saved" element={<SavedKnowledgePage />} />
+        <Route element={<MainLayout />}>
+          {/* The public FAQ discovery page is now the base URL — anyone
+              landing on the site gets the no-auth, anonymous-analytics
+              experience. */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/explore/select" element={<BatchPortalPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/faq/:id" element={<FAQPage />} />
+          <Route path="/community" element={<CommunityPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/saved" element={<SavedKnowledgePage />} />
 
-        {/* Session Support (experimental — gated by feature flag at page level) */}
-        <Route path="/support" element={<SupportIndexPage />} />
-        <Route path="/support/new" element={<NewSupportRequestPage />} />
-        <Route path="/support/:id" element={<SupportTicketPage />} />
+          {/* Session Support (experimental — gated by feature flag at page level) */}
+          <Route path="/support" element={<SupportIndexPage />} />
+          <Route path="/support/new" element={<NewSupportRequestPage />} />
+          <Route path="/support/:id" element={<SupportTicketPage />} />
 
-        {/* v1.65.1 — Golden Ticket (user-driven flow). Wrapped in
-            FeatureGate so admins can toggle the whole feature off
-            from /admin/features. When off, the page shows the same
-            "this feature is currently off" panel the rest of the
-            app uses for experimental features. The backend also
-            gates /golden/queue and /me/sp with the same flag. */}
-        <Route
-          path="/golden"
-          element={
-            <FeatureGate featureKey="goldenTicket" featureLabel="Golden Ticket">
-              <GoldenTicketPage />
-            </FeatureGate>
-          }
-        />
+          {/* v1.65.1 — Golden Ticket (user-driven flow). Wrapped in
+              FeatureGate so admins can toggle the whole feature off
+              from /admin/features. When off, the page shows the same
+              "this feature is currently off" panel the rest of the
+              app uses for experimental features. The backend also
+              gates /golden/queue and /me/sp with the same flag. */}
+          <Route
+            path="/golden"
+            element={
+              <FeatureGate featureKey="goldenTicket" featureLabel="Golden Ticket">
+                <GoldenTicketPage />
+              </FeatureGate>
+            }
+          />
 
-        {/* Member-only: a user's own settings */}
-        <Route
-          path="/account"
-          element={
-            <AccountRoute>
-              <AccountPage />
-            </AccountRoute>
-          }
-        />
+          <Route path="/welcome" element={<WelcomePackagePage />} />
+
+          {/* Member-only: a user's own settings */}
+          <Route
+            path="/account"
+            element={
+              <AccountRoute>
+                <AccountPage />
+              </AccountRoute>
+            }
+          />
+        </Route>
 
         {/* Admin Panel dedicated routes (guarded by AdminRoute) */}
         {/* v1.68 — /admin/login is gone. The single global AuthModal
@@ -177,6 +185,9 @@ function AppRoutes() {
         <Route path="/admin/document-insights" element={<AdminRoute><AdminLayout><AdminDocumentInsights /></AdminLayout></AdminRoute>} />
         <Route path="/admin/settings/ai" element={<AdminRoute><AdminLayout><AdminAISettings /></AdminLayout></AdminRoute>} />
         <Route path="/admin/faqs/review" element={<AdminRoute><AdminLayout><FaqReview /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/welcome" element={<AdminRoute><AdminLayout><AdminWelcomePage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/projects" element={<AdminRoute><AdminLayout><AdminProjectsPage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/projects" element={<AdminRoute><AdminLayout><AdminProjectsPage /></AdminLayout></AdminRoute>} />
         <Route path="/admin/auto-answer" element={<AdminRoute><AdminLayout><AdminAutoAnswerQueue /></AdminLayout></AdminRoute>} />
         <Route path="/admin/faq-audit" element={<AdminRoute><AdminLayout><AdminFAQAudit /></AdminLayout></AdminRoute>} />
         <Route path="/admin/batches" element={<AdminRoute><AdminLayout><AdminBatches /></AdminLayout></AdminRoute>} />

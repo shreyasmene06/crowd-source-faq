@@ -8,6 +8,20 @@ export interface User {
   email?: string;
   role?: string;
   avatar?: { url: string; publicId: string };
+  welcomePackageOnboarded?: boolean;
+  // v1.68 — onboarding CMS + project capacity (PR #62). The
+  // PR added these to the backend IUser but the frontend
+  // User didn't get the matching fields. Without them, the
+  // [key: string]: unknown index signature resolves them to
+  // `unknown`, which fails to assign to ReactNode (the
+  // MyProjectTab "Type '{}' is not assignable to type
+  // 'ReactNode'" errors). Each field is optional because
+  // the same User shape is shared with users that haven't
+  // been assigned a project yet.
+  projectAssigned?: string;
+  mentorAssigned?: string;
+  projectAssignedAt?: Date;
+  projectSelectionLocked?: boolean;
   // Index signature kept for forward-compat with backend fields the
   // client hasn't been taught about yet.
   [key: string]: unknown;
@@ -20,6 +34,7 @@ export interface AuthContextValue {
   logout: () => void;
   loading: boolean;
   isAuthenticated: boolean;
+  fetchUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -106,9 +121,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const fetchUser = async (): Promise<void> => {
+    try {
+      const res = await api.get('/auth/me');
+      const updatedUser = res.data.user as User;
+      localStorage.setItem('yaksha_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    } catch (error) {
+      console.error('Failed to fetch user', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, login, register, logout, loading, isAuthenticated: !!user }}
+      value={{ user, login, register, logout, loading, isAuthenticated: !!user, fetchUser }}
     >
       {children}
     </AuthContext.Provider>

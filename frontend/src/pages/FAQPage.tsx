@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SearchBar from '../components/search/SearchBar';
 import { FAQDoodles } from '../components/ui/PageDoodles';
@@ -430,11 +429,10 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg grid-bg relative">
+    <div className="min-h-screen bg-bg text-ink flex flex-col">
       <FAQDoodles />
-      <Navbar />
 
-      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-[88px] pb-10 relative z-10">
+      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-[112px] sm:pt-[128px] pb-10 relative z-10">
         <div className="mb-6 text-center">
           <h1 className="text-2xl sm:text-3xl font-serif text-ink tracking-tight">
             Intern FAQs — <span className="text-accent">solved</span>

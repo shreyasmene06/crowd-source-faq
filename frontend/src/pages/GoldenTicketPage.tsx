@@ -217,7 +217,7 @@ export default function GoldenTicketPage(): React.ReactElement {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-8">
       {/* v1.66 anti-pattern: never use navigate(-1) for back. */}
       <button
         type="button"
@@ -232,29 +232,20 @@ export default function GoldenTicketPage(): React.ReactElement {
       </button>
 
       {/* Header — always visible so the user has context. */}
-      <header className="mb-8 flex items-start gap-3">
-        <div className="w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center text-accent shrink-0">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M3 7l5 4 4-6 4 6 5-4-1 11H4L3 7zm0 14h18v2H3v-2z" />
-          </svg>
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-serif text-3xl tracking-tight text-ink">Golden Ticket</h1>
-          <p className="text-sm text-ink-soft mt-1">
-            Escalate a time-sensitive query to the admin team. Higher SP = higher priority
-            in the queue. Admins resolve directly — no penalties, no bans, just a 48h
-            cooldown between submissions.
-          </p>
-        </div>
-        {status && (
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-semibold shrink-0">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2 c 0 6 -6 6 -6 12 a 6 6 0 0 0 12 0 c 0 -3 -2 -5 -3 -7 c -1 2 -3 3 -3 -5 z" />
+      <header className="mb-6 sm:mb-8">
+        <div className="flex items-center gap-3 sm:gap-4 mb-2">
+          <div className="w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center text-accent shrink-0">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3 7l5 4 4-6 4 6 5-4-1 11H4L3 7zm0 14h18v2H3v-2z" />
             </svg>
-            <span className="tabular-nums">{status.sp}</span>
-            <span className="text-accent/70 font-medium">SP</span>
           </div>
-        )}
+          <h1 className="text-2xl sm:text-3xl font-serif tracking-tight text-ink">Golden Ticket</h1>
+        </div>
+        <p className="text-sm text-ink-soft max-w-2xl">
+          Escalate a time-sensitive query to the admin team. Higher SP = higher priority
+          in the queue. Admins resolve directly — no penalties, no bans, just a 48h
+          cooldown between submissions.
+        </p>
       </header>
 
       {/* Two-column grid */}

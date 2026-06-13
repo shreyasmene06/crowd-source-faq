@@ -28,6 +28,10 @@ import batchRoutes from './routes/batch.js';
 import supportRoutes from './routes/support.js';
 import featureFlagRoutes from './routes/featureFlag.js';
 import { documentRouter, documentAdminRouter } from './routes/documents.js';
+import welcomeRoutes from './routes/welcomeRoutes.js';
+import adminWelcomeRoutes from './routes/adminWelcomeRoutes.js';
+import adminMentorRoutes from './routes/adminMentorRoutes.js';
+import adminTimelineRoutes from './routes/adminTimelineRoutes.js';
 import { adminRouter as appSettingsAdminRouter, publicRouter as appSettingsPublicRouter } from './routes/appSettings.js';
 import { ingestFrontendLog } from './utils/http/fileLogger.js';
 import { logger, startupLog, shutdownLog, cronLog, queueLog } from './utils/http/logger.js';
@@ -167,6 +171,9 @@ app.use((req: Request, _res: Response, next: (e?: unknown) => void) => {
 // Route to receive frontend logs and write them to main_log.txt
 app.post('/api/log', ingestFrontendLog);
 
+// Serve static uploads
+app.use('/uploads', express.static('uploads'));
+
 // 5. Mount API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/faq', faqRoutes);
@@ -190,6 +197,10 @@ app.use('/api/support', supportRoutes);
 app.use('/api/feature-flags', featureFlagRoutes);
 app.use('/api/documents',       documentRouter);
 app.use('/api/admin/documents', documentAdminRouter);
+app.use('/api/welcome', welcomeRoutes);
+app.use('/api/admin/welcome', adminWelcomeRoutes);
+app.use('/api/admin/mentors', adminMentorRoutes);
+app.use('/api/admin/timeline-steps', adminTimelineRoutes);
 
 // v1.65 — Global app settings (Golden Ticket cooldown, penalty
 // multiplier). Two routers: admin-only at /api/admin/settings and

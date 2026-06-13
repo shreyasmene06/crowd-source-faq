@@ -114,6 +114,21 @@ export interface IUser extends Document {
   // is "cooldown only, never ban, never deduct beyond the SP spend".
   lastGoldenTicketAt: Date | null;
   lastGoldenRejectionAt: Date | null;
+  // Welcome Package tracking
+  welcomePackageOnboarded: boolean;
+  orientationCompleted: boolean;
+  projectAssigned?: string;
+  mentorAssigned?: string;
+  projectAssignedAt?: Date;
+  projectAssignedBy?: string;
+  projectSelectionLocked: boolean;
+  onboardingAuditLog: {
+    changedBy: string;
+    changedAt: Date;
+    oldValue: any;
+    newValue: any;
+  }[];
+  
   // Methods
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -238,6 +253,23 @@ const userSchema = new MongooseSchema<IUser>(
     goldenBanReason:    { type: String, default: '', maxlength: 500 },
     goldenBannedBy:     { type: MongooseSchema.Types.ObjectId, ref: 'User', default: null },
     goldenBannedAt:     { type: Date, default: null },
+    // Welcome Package Tracking (PR #62)
+    welcomePackageOnboarded: { type: Boolean, default: false },
+    orientationCompleted: { type: Boolean, default: false },
+    projectAssigned: { type: String, default: null },
+    mentorAssigned: { type: String, default: null },
+    projectAssignedAt: { type: Date, default: null },
+    projectAssignedBy: { type: String, default: null },
+    projectSelectionLocked: { type: Boolean, default: false },
+    onboardingAuditLog: {
+      type: [{
+        changedBy: { type: String, required: true },
+        changedAt: { type: Date, default: Date.now },
+        oldValue: { type: MongooseSchema.Types.Mixed },
+        newValue: { type: MongooseSchema.Types.Mixed }
+      }],
+      default: []
+    },
   },
   { timestamps: true }
 );

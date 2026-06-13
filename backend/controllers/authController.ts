@@ -44,6 +44,12 @@ interface UserResponse {
   email: string;
   role: UserRole;
   avatar?: { url: string; publicId: string };
+  welcomePackageOnboarded?: boolean;
+  orientationCompleted?: boolean;
+  projectAssigned?: string;
+  mentorAssigned?: string;
+  projectAssignedAt?: Date;
+  projectSelectionLocked?: boolean;
 }
 
 // POST /api/auth/register
@@ -75,6 +81,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       email: user.email,
       role: user.role,
       avatar: user.avatar,
+      welcomePackageOnboarded: user.welcomePackageOnboarded,
+      orientationCompleted: user.orientationCompleted,
+      projectAssigned: user.projectAssigned,
+      mentorAssigned: user.mentorAssigned,
+      projectAssignedAt: user.projectAssignedAt,
+      projectSelectionLocked: user.projectSelectionLocked,
     };
 
     res.status(201).json({ token, user: userResponse });
@@ -141,6 +153,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       email: user.email,
       role: user.role,
       avatar: user.avatar,
+      welcomePackageOnboarded: user.welcomePackageOnboarded,
+      orientationCompleted: user.orientationCompleted,
+      projectAssigned: user.projectAssigned,
+      mentorAssigned: user.mentorAssigned,
+      projectAssignedAt: user.projectAssignedAt,
+      projectSelectionLocked: user.projectSelectionLocked,
     };
 
     res.json({ token, user: userResponse });
@@ -165,6 +183,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     email: req.user.email,
     role: req.user.role,
     avatar: req.user.avatar,
+    welcomePackageOnboarded: (req.user as any).welcomePackageOnboarded,
+    orientationCompleted: (req.user as any).orientationCompleted,
+    projectAssigned: (req.user as any).projectAssigned,
+    mentorAssigned: (req.user as any).mentorAssigned,
+    projectAssignedAt: (req.user as any).projectAssignedAt,
+    projectSelectionLocked: (req.user as any).projectSelectionLocked,
   };
 
   res.json({ user: userResponse });
@@ -255,6 +279,12 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       email: updated.email,
       role: updated.role,
       avatar: updated.avatar,
+      welcomePackageOnboarded: (updated as any).welcomePackageOnboarded,
+      orientationCompleted: (updated as any).orientationCompleted,
+      projectAssigned: (updated as any).projectAssigned,
+      mentorAssigned: (updated as any).mentorAssigned,
+      projectAssignedAt: (updated as any).projectAssignedAt,
+      projectSelectionLocked: (updated as any).projectSelectionLocked,
     };
 
     res.json({ message: 'Profile updated.', user: userResponse });
