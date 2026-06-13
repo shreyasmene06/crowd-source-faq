@@ -173,16 +173,16 @@ async function auditCommunityPosts(db: mongoose.mongo.Db) {
 
 async function auditSupportRequests(db: mongoose.mongo.Db) {
   console.log('\n=== Support Requests ===');
-  const total = await db.collection('yaksha_faq_supportrequests').countDocuments();
+  const total = await db.collection('yaksha_faq_session_support').countDocuments();
   console.log(`  total=${total}`);
 
   // Status enum usage
-  const allStatuses = await db.collection('yaksha_faq_supportrequests').distinct('status');
+  const allStatuses = await db.collection('yaksha_faq_session_support').distinct('status');
   console.log(`  statuses seen: ${JSON.stringify(allStatuses)}`);
 
   // Orphan userId (string or ObjectId)
   const userIdSet = await getUserIdSet(db);
-  const allUserIds = await db.collection('yaksha_faq_supportrequests')
+  const allUserIds = await db.collection('yaksha_faq_session_support')
     .find({ userId: { $ne: null } }, { projection: { userId: 1 } })
     .toArray();
   let orphanUserId = 0;

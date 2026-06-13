@@ -200,13 +200,20 @@ async function seedSupportTickets(db: mongoose.mongo.Db) {
     await SupportRequest.create({
       userId: (requester as { _id: mongoose.Types.ObjectId })._id,
       userName: (requester as { name: string }).name,
+      userEmail: `${(requester as { name: string }).name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@yaksha.com`,
       issueType: t.issueType,
+      issueLabel: t.issueType.charAt(0).toUpperCase() + t.issueType.slice(1) + ' Problem',
+      title: `${t.issueType} support request`,
+      details: t.description,
       status: t.status,
-      description: t.description,
-      contextFields: t.contextFields ?? {},
       isGolden: t.isGolden ?? false,
+      spCost: 0,
       statusHistory,
       followUps: [],
+      contextFields: Object.entries(t.contextFields ?? {}).map(([k, v]) => ({
+        key: k, label: k, value: v,
+      })),
+      guidanceShownAt: daysAgo(t.daysAgo),
       createdAt: daysAgo(t.daysAgo),
       updatedAt: daysAgo(Math.max(0, t.daysAgo - 1)),
     } as never);
@@ -268,7 +275,10 @@ async function seedZoomMeetings(db: mongoose.mongo.Db) {
       startTime: daysAgo(14 - i * 7),
       duration: 45 * 60,
       status: 'completed',
-      progress: { stage: 'completed', percent: 100, message: 'Done' },
+      sourcing: 'manual_vtt',
+      sourceType: 'zoom',
+      processedBy: 'mxbai-embed-large-v1',
+      progress: { stage: 'done', percent: 100, message: 'Done' },
       transcript: 'Sample transcript for the meeting. This is a placeholder for the actual transcript that would be generated from a Zoom recording.',
       insights: [],
     } as never);
@@ -281,7 +291,7 @@ async function seedZoomMeetings(db: mongoose.mongo.Db) {
       const insightA = j === 0
         ? `The team reviewed last sprint's velocity and agreed to reduce WIP. The main focus areas are: deployment pipeline, test coverage, and onboarding docs.`
         : `We agreed to ship a minimum viable version by the end of next sprint, with the full feature set following in the release after.`;
-      await db.collection('yaksha_faq_zoominsights').insertOne({
+      await db.collection('yaksha_zoom_insights').insertOne({
         meetingId: meeting._id,
         type: 'FAQ',
         question: insightQ,
@@ -295,13 +305,13 @@ async function seedZoomMeetings(db: mongoose.mongo.Db) {
         transcript_snippet: insightA.slice(0, 150),
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
+      } as any);
     }
   }
 }
 
 async function seedDocumentRecords(db: mongoose.mongo.Db) {
-  const existing = await db.collection('yaksha_faq_documentrecords').countDocuments();
+  const existing = await db.collection('yaksha_faq_documents').countDocuments();
   if (existing >= TARGET_COUNTS.documentRecords) {
     console.log(`  document records: ${existing} already, skipping`);
     return;
@@ -355,12 +365,18 @@ async function seedLeaderboardPoints(db: mongoose.mongo.Db) {
   for (let i = 0; i < users.length; i++) {
     const u = users[i] as { _id: mongoose.Types.ObjectId };
     const pts = tierPoints[i] ?? 5;
+    // v1.68 — also recompute the tier field. The audit
+    // flags tier≠calculateTier(points) as a data quality
+    // issue, so we keep them in sync here.
+    const { calculateTier } = await import('../models/User.js');
+    const tier = calculateTier(pts);
     await db.collection('yaksha_faq_users').updateOne(
       { _id: u._id },
       {
         $set: {
           points: pts,
           reputation: pts,
+          tier,
           acceptedAnswers: i < 3 ? Math.floor(pts / 50) : 0,
           faqContributions: i < 5 ? Math.floor(pts / 100) : 0,
         },

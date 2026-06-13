@@ -349,20 +349,6 @@ communityPostSchema.index({ reports: 1 });
 communityPostSchema.index({ 'lifecycle.status': 1, createdAt: 1 });
 communityPostSchema.index({ 'lifecycle.communityAcceptedAt': 1 });
 communityPostSchema.index({ 'lifecycle.aiValidatedAt': 1 });
-
-
-// v1.68 — schema indexes
-// 'all posts by user X' is a common hot path (my-profile →
-// my posts, admin → user's history). The 'author' field
-// is not indexed; every such query is a full collection
-// scan. At 31 posts today it's a no-op; at 100k+ it's
-// catastrophic. Compound with createdAt so the common
-// "newest first" sort is free.
-communityPostSchema.index({ author: 1, createdAt: -1 });
-// 'unanswered posts ordered by newest' — the homepage query.
-communityPostSchema.index({ status: 1, createdAt: -1 });
-// 'all golden tickets in queue' — admin dashboard.
-communityPostSchema.index({ isGolden: 1, createdAt: -1 });
 export default mongoose.model<ICommunityPost>(
   'CommunityPost',
   communityPostSchema,

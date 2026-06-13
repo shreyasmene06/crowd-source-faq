@@ -22,7 +22,8 @@
     "backfill:public-metrics": "tsx scripts/backfillPublicMetrics.ts",
     "audit:data": "tsx scripts/auditData.ts",
     "cleanup:orphan-notifications": "tsx scripts/cleanupOrphanNotifications.ts",
-    "seed:live": "tsx scripts/seedLiveData.ts"
+    "seed:live": "tsx scripts/seedLiveData.ts",
+    "recompute:tier": "tsx scripts/recomputeTier.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
