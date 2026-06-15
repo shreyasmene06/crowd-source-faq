@@ -41,6 +41,8 @@ import adminWelcomeRoutes from './routes/adminWelcomeRoutes.js';
 import adminMentorRoutes from './routes/adminMentorRoutes.js';
 import adminTimelineRoutes from './routes/adminTimelineRoutes.js';
 import { adminRouter as appSettingsAdminRouter, publicRouter as appSettingsPublicRouter } from './routes/appSettings.js';
+import adminCategoryClusterRoutes from './routes/adminCategoryCluster.js';
+import publicCategoryClusterRoutes from './routes/publicCategoryCluster.js';
 import { ingestFrontendLog } from './utils/http/fileLogger.js';
 import { logger, startupLog, shutdownLog, cronLog, queueLog } from './utils/http/logger.js';
 import { startBot, stopBot } from './bot/discordBot.js';
@@ -64,6 +66,7 @@ import { flushSearchLogs } from './controllers/searchController.js';
 import { jobQueue } from './utils/http/jobQueue.js';
 import { getCloudinaryConfig } from './utils/http/cloudinary.js';
 import { recomputePopularity } from './controllers/publicFaqController.js';
+import { clusterAllActiveBatches } from './utils/ai/categoryClusterer.js';
 import * as Sentry from '@sentry/node';
 import { expressIntegration } from '@sentry/node';
 
@@ -212,6 +215,8 @@ app.use('/api/admin/programs', programZoomRoutes);
 app.use('/api/admin/programs', programDiscordRoutes);
 app.use('/api/admin/programs', programFeatureFlagsRoutes);
 app.use('/api/admin/programs', programAppSettingsRoutes);
+app.use('/api/admin/programs/:batchId/category-clusters', adminCategoryClusterRoutes);
+app.use('/api/public/category-clusters', publicCategoryClusterRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api', enrollmentRoutes);
 app.use('/api/support', supportRoutes);
@@ -427,6 +432,22 @@ if (process.env.NODE_ENV !== 'production') {
     // Daily FAQ freshness check — auto-flags stale FAQs due for review
     const freshnessInterval = setInterval(() => runFreshnessCheck().catch((e: Error) => logger.error(`Freshness check: ${e.message}`)), 24 * 60 * 60 * 1000);
     runFreshnessCheck().catch((e: Error) => logger.error(`Initial freshness check: ${e.message}`));
+
+    // v1.70 — Dynamic Categories: recompute category clusters for every
+    // active batch every 24h. Locked clusters (admin-curated) survive;
+    // everything else gets refreshed. The first pass runs 15s after boot
+    // so it doesn't fight the initial popularity / promotion cycles.
+    const CATEGORY_CLUSTER_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    const categoryClusterInterval = setInterval(() => {
+      clusterAllActiveBatches().catch((e: Error) =>
+        logger.error(`[categoryClusterer] cron: ${e.message}`)
+      );
+    }, CATEGORY_CLUSTER_INTERVAL_MS);
+    setTimeout(() => {
+      clusterAllActiveBatches().catch((e: Error) =>
+        logger.error(`[categoryClusterer] initial cluster: ${e.message}`)
+      );
+    }, 15_000);
 
     // Public FAQ popularity recompute — every 5 min, idempotent. Aggregates
     // GuestEvent metrics into the FAQ document and re-derives popularityScore

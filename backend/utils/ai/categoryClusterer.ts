@@ -43,6 +43,7 @@ import Batch from '../../models/Batch.js';
 import { generateEmbedding } from './embeddings.js';
 import { chatWithProvider, resolveActiveAiConfig } from './aiProvider.js';
 import { logger } from '../http/logger.js';
+import mongoose from 'mongoose';
 
 const CLUSTER_THRESHOLD = 0.7;
 const DOT_PRODUCT_EPSILON = 1e-9;
@@ -60,38 +61,59 @@ interface PendingCluster {
 }
 
 /**
- * Group FAQs by category in-memory and compute per-category centroids.
- * Skips FAQs without embeddings.
+ * Group FAQs by category in-memory and compute per-category centroids
+ * from each category's NAME (not the FAQ content). Empirically the FAQ
+ * content embeddings are too topical — for a single-program portal,
+ * every FAQ is "about the Yaksha internship" and the centroids all
+ * collapse to the same region, which makes 11 distinct categories
+ * merge into one cluster. Using the category names directly gives
+ * cleaner, more interpretable clusters (e.g. "NOC" and "NOC (No
+ * Objection Certificate)" get a high dot product because they share
+ * the same head noun; "Certificate" doesn't merge with "NOC").
+ *
+ * FAQ counts per category are still derived from the live FAQ
+ * collection — that's the "weight" the AI naming step uses to pick
+ * the canonical name when there are multiple aliases.
  */
 async function buildCategoryCentroids(batchId: string): Promise<CategoryEmbedding[]> {
-  // Pull just the fields we need. embedding is a number[] (1024 dims
-  // for mxbai), so for a typical program (a few hundred FAQs) this
-  // is a few hundred KB — fine to do in-memory.
-  const cursor = FAQ.find({ batchId, status: 'approved' })
-    .select({ category: 1, embedding: 1 })
-    .lean()
-    .cursor({ batchSize: 200 });
+  // batchId in FAQ is a Mongoose ObjectId — pass the right type
+  // to $match or the aggregate returns 0. The TypeScript
+  // narrowing for `Types.ObjectId` is finicky, hence the cast.
+  const batchObjectId = new mongoose.Types.ObjectId(batchId);
+  const grouped = await FAQ.aggregate<{ _id: string; count: number }>([
+    { $match: { batchId: batchObjectId, status: 'approved', category: { $ne: null } } },
+    { $group: { _id: '$category', count: { $sum: 1 } } },
+  ]);
+  const names = grouped
+    .map((g) => ({ name: String(g._id), faqCount: g.count }))
+    .filter((g) => g.name.length > 0);
 
-  const byCategory = new Map<string, { sum: number[]; count: number }>();
+  if (names.length === 0) return [];
 
-  for await (const faq of cursor) {
-    if (!faq.category || !Array.isArray(faq.embedding) || faq.embedding.length === 0) continue;
-    const cat = String(faq.category);
-    const acc = byCategory.get(cat);
-    if (!acc) {
-      byCategory.set(cat, { sum: [...faq.embedding], count: 1 });
-    } else {
-      const e = faq.embedding;
-      for (let i = 0; i < e.length; i++) acc.sum[i] += e[i];
-      acc.count += 1;
+  // Embed each category name serially. The underlying
+  // transformers.js embedder is a single ONNX session, and
+  // parallel calls have been observed to corrupt its state
+  // (subsequent calls return zero vectors). For ~30 names
+  // this is ~10s wall-clock — fine for a 24h cron. If this
+  // ever becomes the bottleneck, swap the implementation
+  // for a queue (one inflight at a time) instead of
+  // Promise.all.
+  const vectors: (number[] | null)[] = [];
+  for (const n of names) {
+    try {
+      const v = await generateEmbedding(n.name);
+      vectors.push(Array.isArray(v) ? v : null);
+    } catch (err) {
+      logger.warn(`[categoryClusterer] embed failed for "${n.name}": ${(err as Error).message}`);
+      vectors.push(null);
     }
   }
 
   const out: CategoryEmbedding[] = [];
-  for (const [name, { sum, count }] of byCategory) {
-    if (count === 0) continue;
-    const centroid = sum.map((v) => v / count);
-    out.push({ name, faqCount: count, centroid: l2Normalize(centroid) });
+  for (let i = 0; i < names.length; i++) {
+    const v = vectors[i];
+    if (!v || !Array.isArray(v) || v.length === 0) continue;
+    out.push({ name: names[i].name, faqCount: names[i].faqCount, centroid: l2Normalize(v) });
   }
   return out;
 }
