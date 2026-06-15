@@ -1,6 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { FAQItem, getCategoryTheme, getCategoryDescription, getCategoryIcon, formatCategoryName, getQuestionTitle } from './faqUtils';
 
+/**
+ * Curated set of category names for the search-overlay suggestion pills.
+ * The icons are resolved through `getCategoryIcon` so the pill list
+ * always matches the live FAQPage category-card icons.
+ *
+ * @deprecated Prefer API-driven category lists for production data;
+ * this export exists so legacy consumers (e.g. the home-page search
+ * overlay) have a sensible default before the API responds.
+ */
+export const categoryPills: Array<{ name: string; icon: React.ReactNode }> = [
+  'ViBe (Learning Platform)',
+  'Team Formation',
+  'Timings',
+  'NOC',
+  'Offer Letter',
+  'Projects',
+  'Rosetta',
+  'Certificate',
+  'Interviews',
+  'Others',
+].map((name) => ({ name, icon: getCategoryIcon(name) }));
+
 interface CategoryCardProps {
   name: string;
   items: FAQItem[];
