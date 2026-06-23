@@ -258,7 +258,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
     const { name, email, avatar } = req.body as {
       name?: string;
       email?: string;
-      avatar?: { url?: string; publicId?: string } | null;
+      avatar?: { url?: string; publicId?: string; gcsUri?: string; objectPath?: string } | null;
     };
 
     if (!name && !email && avatar === undefined) {
@@ -266,7 +266,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const updates: Partial<{ name: string; email: string; avatar: { url: string; publicId: string } | null }> = {};
+    const updates: Partial<{ name: string; email: string; avatar: { url: string; publicId?: string; gcsUri?: string; objectPath?: string } | null }> = {};
     if (name) updates.name = name;
     if (email) {
       // Check if email is already taken by another user
@@ -278,20 +278,21 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       updates.email = email;
     }
     if (avatar !== undefined) {
-      // `null` clears the avatar. An object updates it. We always validate
-      // the URL is on our Cloudinary account so the client can't slip in
-      // a URL pointing elsewhere.
+      // `null` clears the avatar. An object updates it. We validate the
+      // URL against whichever storage backend it points at:
+      //   - Cloudinary URLs (res.cloudinary.com/...) — old shape, requires publicId
+      //   - GCS URLs (media.mydomain.com/...) — new shape, requires gcsUri + objectPath
       if (avatar === null) {
         updates.avatar = null;
-      } else {
-        if (!avatar.url || !avatar.publicId) {
-          res.status(400).json({ message: 'avatar requires both url and publicId.' });
+      } else if (!avatar.url) {
+        res.status(400).json({ message: 'avatar.url is required.' });
+        return;
+      } else if (avatar.url.includes('res.cloudinary.com/')) {
+        if (!avatar.publicId) {
+          res.status(400).json({ message: 'avatar requires publicId for Cloudinary URLs.' });
           return;
         }
         try {
-          // Lazy import — only load cloudinary utils if we actually need to
-          // validate an avatar. Keeps /api/auth/profile responsive when no
-          // avatar is being changed.
           const { isOurCloudinaryAsset, getCloudinaryConfig } = await import('../../integrations/cloudinary/cloudinary.js');
           const cfg = getCloudinaryConfig();
           if (!isOurCloudinaryAsset(avatar.url, cfg.cloudName)) {
@@ -303,6 +304,27 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           return;
         }
         updates.avatar = { url: avatar.url, publicId: avatar.publicId };
+      } else {
+        // GCS branch — new default for all fresh uploads.
+        if (!avatar.gcsUri || !avatar.objectPath) {
+          res.status(400).json({ message: 'avatar requires gcsUri and objectPath for GCS URLs.' });
+          return;
+        }
+        try {
+          const { isOurGcsAsset } = await import('../../integrations/gcs/gcs.js');
+          if (!isOurGcsAsset(avatar.url)) {
+            res.status(400).json({ message: 'avatar.url must be a valid GCS asset URL.' });
+            return;
+          }
+        } catch (e) {
+          res.status(503).json({ message: (e as Error).message });
+          return;
+        }
+        updates.avatar = {
+          url: avatar.url,
+          gcsUri: avatar.gcsUri,
+          objectPath: avatar.objectPath,
+        };
       }
     }
 

@@ -170,12 +170,15 @@ const userSchema = new MongooseSchema<IUser>(
     password: { type: String, required: true, minlength: 6, select: false },
     role: { type: String, enum: ['user', 'moderator', 'admin', 'ai_moderator', 'expert'] as UserRole[], default: 'user' },
 
-    // Profile picture (Cloudinary). Both fields are optional — a user
-    // without one falls back to the initial-based avatar rendered in the
-    // navbar/comment/post cards.
+    // Profile picture.
+    //   - url + publicId: legacy Cloudinary shape (still readable during migration)
+    //   - url + gcsUri + objectPath: new GCS shape (default for new uploads)
+    // Without one, the UI falls back to the initial-based avatar.
     avatar: {
       url: { type: String },
       publicId: { type: String },
+      gcsUri: { type: String },
+      objectPath: { type: String },
     },
 
     // Reputation

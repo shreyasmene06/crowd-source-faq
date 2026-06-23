@@ -1,45 +1,64 @@
 import { Router } from 'express';
 import { protect } from '../../middleware/auth.js';
-import { getCloudinaryConfig, signUploadParams, isOurCloudinaryAsset } from '../../integrations/cloudinary/cloudinary.js';
+import { getGcsConfig, signGcsUpload, isOurGcsAsset } from '../../integrations/gcs/gcs.js';
 
 const router = Router();
 
 /**
- * GET /api/upload/sign
+ * GET /csfaq/api/upload/sign
  *
- * Returns a signed Cloudinary upload token. The browser uses this to POST
- * an image file directly to Cloudinary's /image/upload endpoint. After
- * upload, the browser sends the resulting `secure_url` + `public_id` to
- * the appropriate model endpoint (e.g. /api/auth/profile for avatar,
- * /api/community for post attachments).
+ * Returns a V4-signed GCS PUT URL. The browser uploads the file DIRECTLY
+ * to GCS using that URL — the file bytes never traverse our backend. The
+ * server controls the object path (userId + subfolder) so the browser
+ * can't write into a sibling user's space or to a different prefix.
  *
- * The `folder` is locked to `yaksha/<userId>/<subfolder>` so different
- * users can't clobber each other's files. The actual `public_id` is set
- * client-side from a UUID we issue in the response.
+ * The signed URL has:
+ *   - 15-minute TTL (configurable via gcs.signedUrlTtlSeconds)
+ *   - Content-Type locked into the signature so a browser can't swap a
+ *     PNG for a JS payload
+ *   - action: 'write' — read-only access is not granted by this URL
+ *
+ * After upload, the browser sends the resulting `publicUrl` + `gcsUri` to
+ * the relevant model endpoint (e.g. /csfaq/api/auth/profile for avatar,
+ * /csfaq/api/community for post attachments).
  */
 router.get('/sign', protect, async (req, res) => {
   try {
-    const cfg = getCloudinaryConfig();
-    const subfolder = String(req.query.subfolder ?? 'misc');
-    if (!/^[a-z0-9_-]{1,32}$/i.test(subfolder)) {
-      res.status(400).json({ message: 'subfolder must be alphanumeric, dash, or underscore (1-32 chars).' });
+    const cfg = getGcsConfig();
+    const subfolder = String(req.query.subfolder ?? '');
+    if (!subfolder) {
+      res.status(400).json({ message: 'subfolder query param is required.' });
+      return;
+    }
+    if (!cfg.allowedSubfolders.includes(subfolder)) {
+      res.status(400).json({
+        message: `subfolder '${subfolder}' is not allowed.`,
+        allowed: cfg.allowedSubfolders,
+      });
+      return;
+    }
+    // Content-Type from query so the URL is signed with the right MIME.
+    // The browser PUTs the file with the same Content-Type.
+    const contentType = String(req.query.contentType ?? '');
+    if (!cfg.allowedMimeTypes.includes(contentType)) {
+      res.status(400).json({
+        message: `contentType '${contentType}' is not allowed.`,
+        allowed: cfg.allowedMimeTypes,
+      });
       return;
     }
     const userId = (req.user as { _id: { toString: () => string } })._id.toString();
-    // The folder is server-controlled — the browser can't upload into a
-    // sibling user's space.
-    const folder = `${cfg.folder}/${userId}/${subfolder}`;
-    const signed = signUploadParams(cfg, { folder });
 
-    res.json({
-      ...signed,
-      // Some friendly defaults the browser can use to build the upload URL.
-      uploadUrl: `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,
-    });
+    // Generate a suggested filename so the bucket layout is consistent.
+    // The browser may override by passing ?filename= but we still sanitise.
+    const filename = String(req.query.filename ?? 'image');
+    const signed = await signGcsUpload({ userId, subfolder, filename, contentType });
+
+    res.json(signed);
   } catch (err) {
-    // Surface the missing-config error clearly to the developer.
     const msg = (err as Error).message;
-    if (msg.startsWith('Cloudinary is not configured')) {
+    if (msg.includes('GCS_BUCKET') || msg.includes('GCS_PUBLIC_HOST')) {
+      // Misconfiguration — surface clearly so the operator can fix it.
       res.status(503).json({ message: msg });
       return;
     }
@@ -48,19 +67,21 @@ router.get('/sign', protect, async (req, res) => {
 });
 
 /**
- * GET /api/upload/config
+ * GET /csfaq/api/upload/config
  *
- * Public — returns just the cloud name + a default folder. The signature
- * still requires auth (see /sign), but the browser uses this to build
- * the upload URL on the client without hardcoding the cloud name.
+ * Public — returns the upload limits so the client can validate before
+ * requesting a signed URL. No secrets, no auth needed.
  */
 router.get('/config', (_req, res) => {
   try {
-    const cfg = getCloudinaryConfig();
+    const cfg = getGcsConfig();
     res.json({
-      cloudName: cfg.cloudName,
-      uploadUrl: `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,
-      folder: cfg.folder,
+      publicHost: cfg.publicHost,
+      bucket: cfg.bucket,
+      allowedMimeTypes: cfg.allowedMimeTypes,
+      maxFileSizeMb: cfg.maxFileSizeMb,
+      signedUrlTtlSeconds: cfg.signedUrlTtlSeconds,
+      allowedSubfolders: cfg.allowedSubfolders,
     });
   } catch (err) {
     res.status(503).json({ message: (err as Error).message });
@@ -68,15 +89,14 @@ router.get('/config', (_req, res) => {
 });
 
 /**
- * Lightweight validator: returns true if a given secure_url points at our
- * configured Cloudinary account. Use this server-side before saving a
- * URL onto a model — prevents the browser from slipping in a URL to a
- * different account.
+ * Lightweight validator: returns true if a given publicUrl points at our
+ * GCS bucket via the CDN host. Use this server-side before saving a URL
+ * onto a model — prevents the browser from slipping in a URL to a
+ * different bucket.
  */
-export function assertOurCloudinaryUrl(secureUrl: string): void {
-  const cfg = getCloudinaryConfig();
-  if (!isOurCloudinaryAsset(secureUrl, cfg.cloudName)) {
-    throw new Error('URL is not a valid Cloudinary asset for this account.');
+export function assertOurGcsUrl(publicUrl: string): void {
+  if (!isOurGcsAsset(publicUrl)) {
+    throw new Error('URL is not a valid GCS asset for this deployment.');
   }
 }
 

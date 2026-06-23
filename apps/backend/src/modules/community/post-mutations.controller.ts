@@ -40,7 +40,7 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
       // — the browser uploads to Cloudinary directly using /api/upload/sign,
       // then sends back just the publicId + url. We validate ownership of
       // the URL before saving.
-      attachments?: Array<{ url?: string; publicId?: string; width?: number; height?: number; format?: string; bytes?: number }>;
+      attachments?: Array<{ url?: string; publicId?: string; gcsUri?: string; objectPath?: string; width?: number; height?: number; format?: string; bytes?: number }>;
     };
 
     // Validate inputs
@@ -88,37 +88,65 @@ export const createPost = async (req: Request, res: Response): Promise<void> => 
     // are on our Cloudinary account. Cloudinary's free plan caps the asset
     // count + size, so we hard-limit per post to keep the feed reasonable.
     const MAX_ATTACHMENTS = 4;
-    let safeAttachments: Array<{ url: string; publicId: string; width?: number; height?: number; format?: string; bytes?: number }> = [];
+    let safeAttachments: Array<{ url: string; publicId?: string; gcsUri?: string; objectPath?: string; width?: number; height?: number; format?: string; bytes?: number }> = [];
     if (Array.isArray(attachments) && attachments.length > 0) {
       if (attachments.length > MAX_ATTACHMENTS) {
         res.status(400).json({ message: `At most ${MAX_ATTACHMENTS} image attachments per post.` });
         return;
       }
-      // Validate that every URL is on our Cloudinary. Lazy import — most
-      // posts have no attachments and shouldn't pay the import cost.
-      let cfg: { cloudName: string };
+      // Validate that every URL is on our storage. v1.71: support both
+      // legacy Cloudinary URLs (require publicId) and new GCS URLs
+      // (require gcsUri + objectPath). Lazy import — most posts have no
+      // attachments and shouldn't pay the import cost.
+      let cloudCfg: { cloudName: string } | null = null;
       try {
         const { getCloudinaryConfig } = await import('../../integrations/cloudinary/cloudinary.js');
-        cfg = getCloudinaryConfig();
-      } catch (e) {
-        res.status(503).json({ message: (e as Error).message });
-        return;
+        cloudCfg = getCloudinaryConfig();
+      } catch {
+        // Cloudinary not configured — only GCS attachments will validate.
+        cloudCfg = null;
       }
       const { isOurCloudinaryAsset } = await import('../../integrations/cloudinary/cloudinary.js');
+      const { isOurGcsAsset } = await import('../../integrations/gcs/gcs.js');
       for (const a of attachments) {
-        if (!a?.url || !a?.publicId) continue;
-        if (!isOurCloudinaryAsset(a.url, cfg.cloudName)) {
-          res.status(400).json({ message: 'attachment.url must be a valid Cloudinary URL for this account.' });
-          return;
+        if (!a?.url) continue;
+        if (a.url.includes('res.cloudinary.com/')) {
+          if (!cloudCfg || !a.publicId) {
+            res.status(400).json({ message: 'Cloudinary attachment requires publicId.' });
+            return;
+          }
+          if (!isOurCloudinaryAsset(a.url, cloudCfg.cloudName)) {
+            res.status(400).json({ message: 'attachment.url must be a valid Cloudinary URL.' });
+            return;
+          }
+          safeAttachments.push({
+            url: a.url,
+            publicId: a.publicId,
+            width: a.width,
+            height: a.height,
+            format: a.format,
+            bytes: a.bytes,
+          });
+        } else {
+          // GCS branch
+          if (!a.gcsUri || !a.objectPath) {
+            res.status(400).json({ message: 'GCS attachment requires gcsUri and objectPath.' });
+            return;
+          }
+          if (!isOurGcsAsset(a.url)) {
+            res.status(400).json({ message: 'attachment.url must be a valid GCS asset URL.' });
+            return;
+          }
+          safeAttachments.push({
+            url: a.url,
+            gcsUri: a.gcsUri,
+            objectPath: a.objectPath,
+            width: a.width,
+            height: a.height,
+            format: a.format,
+            bytes: a.bytes,
+          });
         }
-        safeAttachments.push({
-          url: a.url,
-          publicId: a.publicId,
-          width: a.width,
-          height: a.height,
-          format: a.format,
-          bytes: a.bytes,
-        });
       }
     }
 

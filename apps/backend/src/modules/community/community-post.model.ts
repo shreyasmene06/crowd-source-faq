@@ -114,7 +114,9 @@ export interface ICommunityPost extends Document {
    */
   attachments: Array<{
     url: string;
-    publicId: string;
+    publicId?: string;
+    gcsUri?: string;
+    objectPath?: string;
     width?: number;
     height?: number;
     format?: string;
@@ -238,7 +240,9 @@ const communityPostSchema = new MongooseSchema(
     attachments: {
       type: [{
         url: { type: String, required: true },
-        publicId: { type: String, required: true },
+        publicId: { type: String },
+        gcsUri: { type: String },
+        objectPath: { type: String },
         width: { type: Number },
         height: { type: Number },
         format: { type: String },
