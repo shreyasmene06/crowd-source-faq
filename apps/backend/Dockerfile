@@ -18,14 +18,14 @@ COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY packages/validation/package.json ./packages/validation/
-COPY frontend/package.json ./frontend/
+COPY apps/frontend/package.json ./apps/frontend/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY packages/ ./packages/
-COPY frontend/ ./frontend/
+COPY apps/frontend/ ./apps/frontend/
 
 # Build frontend static bundle
 RUN pnpm build --filter=yaksha-faq-frontend
@@ -53,7 +53,7 @@ COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
 COPY packages/validation/package.json ./packages/validation/
-COPY backend/package.json ./backend/
+COPY apps/backend/package.json ./apps/backend/
 
 # Install dependencies (only configs copied so far for caching)
 RUN pnpm install --frozen-lockfile
@@ -83,15 +83,15 @@ RUN curl -1sLf \
 # Copy workspace dependencies & cached store from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
-COPY --from=deps /app/backend ./backend
+COPY --from=deps /app/apps/backend ./apps/backend
 COPY --from=deps /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/tsconfig.base.json /app/turbo.json ./
 
 # Copy actual source files
 COPY packages/ ./packages/
-COPY backend/ ./backend/
+COPY apps/backend/ ./apps/backend/
 
 # Copy built frontend static assets from frontend-build stage
-COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+COPY --from=frontend-build /app/apps/frontend/dist ./apps/frontend/dist
 
 # Re-run install to make sure all symlinks (workspaces) are properly linked
 RUN pnpm install --frozen-lockfile --offline
@@ -100,7 +100,7 @@ RUN pnpm install --frozen-lockfile --offline
 RUN mkdir -p /app/logs
 
 # Set working directory to backend
-WORKDIR /app/backend
+WORKDIR /app/apps/backend
 
 # Expose the backend API port
 EXPOSE 6767

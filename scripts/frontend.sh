@@ -12,7 +12,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
-FRONTEND="$ROOT/frontend"
+FRONTEND="$ROOT/apps/frontend"
 
 VITE="$FRONTEND/node_modules/.bin/vite"
 
@@ -34,7 +34,7 @@ dim()   { echo -e "${F_DIM}       $1${F_RESET}"; }
 die()   { alert "$1" >&2; exit 1; }
 
 is_running() {
-  curl -sf --max-time 3 http://localhost:5173 > /dev/null 2>&1
+  curl -sf --max-time 3 http://localhost:5173/csfaq/ > /dev/null 2>&1
 }
 
 stop_port() {

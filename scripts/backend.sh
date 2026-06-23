@@ -12,7 +12,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$SCRIPT_DIR/.."
-BACKEND="$ROOT/backend"
+BACKEND="$ROOT/apps/backend"
 
 TSX="$BACKEND/node_modules/.bin/tsx"
 
@@ -34,7 +34,7 @@ dim()   { echo -e "${F_DIM}       $1${F_RESET}"; }
 die()   { alert "$1" >&2; exit 1; }
 
 is_running() {
-  curl -sf --max-time 3 http://localhost:6767/api/health > /dev/null 2>&1
+  curl -sf --max-time 3 http://localhost:6767/csfaq/api/health > /dev/null 2>&1
 }
 
 stop_port() {

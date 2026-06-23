@@ -12,8 +12,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$SCRIPT_DIR"
-BACKEND="$ROOT/backend"
-FRONTEND="$ROOT/frontend"
+BACKEND="$ROOT/apps/backend"
+FRONTEND="$ROOT/apps/frontend"
 
 # ── Terminal colors (ANSI) ───────────────────────────────────────────────────
 # Use bash ANSI-C quoting ($'...') so the values hold the
@@ -185,7 +185,7 @@ wait_for_backend() {
   log "waiting for backend to be ready..."
   while [ $waited -lt $max_wait ]; do
     local status
-    status=$(curl -sf --max-time 2 http://localhost:6767/api/health 2>/dev/null \
+    status=$(curl -sf --max-time 2 http://localhost:6767/csfaq/api/health 2>/dev/null \
       | grep -o '"db":"[^"]*"' 2>/dev/null | cut -d'"' -f4 \
       || echo "waiting")
     if [ "$status" = "connected" ]; then
