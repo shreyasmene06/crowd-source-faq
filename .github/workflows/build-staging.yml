@@ -47,7 +47,6 @@ permissions:
 
 env:
   BACKEND_IMAGE: csfaq-backend
-  FRONTEND_IMAGE: csfaq-frontend
   INFISICAL_ENVIRONMENT: staging
   INFISICAL_SECRET_PATH: /
 
@@ -79,38 +78,25 @@ jobs:
           SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "sha_short=$SHA_SHORT" >> "$GITHUB_OUTPUT"
           echo "backend_tags=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:staging,${{ secrets.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:staging-$SHA_SHORT" >> "$GITHUB_OUTPUT"
-          echo "frontend_tags=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:staging,${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:staging-$SHA_SHORT" >> "$GITHUB_OUTPUT"
 
-      - name: Build & Push Backend Image
+      - name: Build & Push Unified Image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: backend/Dockerfile
+          file: apps/backend/Dockerfile
           push: true
           platforms: linux/amd64
           tags: ${{ steps.tags.outputs.backend_tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build & Push Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          platforms: linux/amd64
-          tags: ${{ steps.tags.outputs.frontend_tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Summary
         run: |
-          echo "### 🐳 Images Pushed" >> $GITHUB_STEP_SUMMARY
+          echo "### 🐳 Unified Image Pushed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Service | Tags |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend | \`staging\`, \`staging-${{ steps.tags.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend | \`staging\`, \`staging-${{ steps.tags.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend & Frontend (Unified) | \`staging\`, \`staging-${{ steps.tags.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
 
   # ── Deploy to Staging VPS ──────────────────────────────────────────────────
   deploy:
@@ -132,9 +118,8 @@ jobs:
           script: |
             set -e
 
-            echo "📦 Pulling latest staging images..."
+            echo "📦 Pulling latest staging unified image..."
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:staging
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:staging
 
             echo "🚀 Deploying with docker-compose..."
             cd ~/yaksha-faq || cd /opt/yaksha-faq
@@ -159,4 +144,4 @@ jobs:
           echo "### 🚀 Staging Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Deployed to staging VPS at \`${{ secrets.STAGING_SSH_HOST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "Images: \`staging\` tag" >> $GITHUB_STEP_SUMMARY
+          echo "Image: \`staging\` tag" >> $GITHUB_STEP_SUMMARY
