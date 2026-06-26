@@ -131,7 +131,15 @@ function getLocalRedisClient(): CacheClient | null {
 
 function handleClientError(err: any) {
   const msg = (err as Error).message || '';
-  if (msg.includes('rate limit') || msg.includes('quota') || msg.includes('Forbidden') || msg.includes('Unauthorized')) {
+  const lowerMsg = msg.toLowerCase();
+  if (
+    lowerMsg.includes('rate limit') ||
+    lowerMsg.includes('quota') ||
+    lowerMsg.includes('forbidden') ||
+    lowerMsg.includes('unauthorized') ||
+    lowerMsg.includes('limit exceeded') ||
+    lowerMsg.includes('max requests')
+  ) {
     if (!useLocalFallback) {
       logger.warn(`[cache] Upstash Redis error detected: ${msg}. Switching to local Redis fallback.`);
       useLocalFallback = true;

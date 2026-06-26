@@ -99,8 +99,32 @@ export function getRedisRateLimitStore(prefix: string): Store | undefined {
       // sendCommand is the bridge rate-limit-redis uses to talk to
       // any Redis-compatible client. The signature expects
       // Promise<RedisReply>; cast the ioredis return value through unknown.
-      sendCommand: (...args: string[]): Promise<RedisReply> =>
-        client.call(...(args as [string, ...string[]])) as unknown as Promise<RedisReply>,
+      sendCommand: async (...args: string[]): Promise<RedisReply> => {
+        try {
+          return await (client.call(...(args as [string, ...string[]])) as unknown as Promise<RedisReply>);
+        } catch (err) {
+          const msg = (err as Error).message || '';
+          const lowerMsg = msg.toLowerCase();
+          if (
+            lowerMsg.includes('rate limit') ||
+            lowerMsg.includes('quota') ||
+            lowerMsg.includes('forbidden') ||
+            lowerMsg.includes('unauthorized') ||
+            lowerMsg.includes('limit exceeded') ||
+            lowerMsg.includes('max requests')
+          ) {
+            let activeClient = _client;
+            if (!useLocalFallback || !activeClient) {
+              logger.warn(`[rateLimitRedis] Upstash Redis error detected in command: ${msg}. Switching to local Redis fallback.`);
+              useLocalFallback = true;
+              activeClient = buildLocalClient();
+              _client = activeClient;
+            }
+            return await (activeClient.call(...(args as [string, ...string[]])) as unknown as Promise<RedisReply>);
+          }
+          throw err;
+        }
+      },
       prefix: `rl:${prefix}:`,  // unique namespace in Redis per limiter
     });
   } catch (err) {

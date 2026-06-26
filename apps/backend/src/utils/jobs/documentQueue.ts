@@ -194,7 +194,15 @@ export function startDocumentWorker(): boolean {
   _worker.on('error', (err) => {
     logger.warn(`[documentQueue] worker error: ${err.message}`);
     const msg = err.message || '';
-    if (msg.includes('ECONNREFUSED') || msg.includes('rate limit') || msg.includes('quota') || msg.includes('Forbidden')) {
+    const lowerMsg = msg.toLowerCase();
+    if (
+      lowerMsg.includes('econnrefused') ||
+      lowerMsg.includes('rate limit') ||
+      lowerMsg.includes('quota') ||
+      lowerMsg.includes('forbidden') ||
+      lowerMsg.includes('limit exceeded') ||
+      lowerMsg.includes('max requests')
+    ) {
       if (!useLocalFallback) {
         logger.warn('[documentQueue] Remote Redis connection failed. Falling back to local Redis.');
         useLocalFallback = true;
