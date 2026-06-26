@@ -48,21 +48,21 @@ importers:
 
   apps/backend:
     dependencies:
+      '@csfaq/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@csfaq/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      '@csfaq/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       '@google-cloud/storage':
         specifier: ^7.21.0
         version: 7.21.0
       '@sentry/node':
         specifier: ^10.55.0
         version: 10.59.0(vite@5.4.21(@types/node@25.9.4))
-      '@shamagama/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@shamagama/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      '@shamagama/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
       '@upstash/redis':
         specifier: ^1.38.0
         version: 1.38.0
@@ -184,6 +184,15 @@ importers:
       '@asamuzakjp/css-color':
         specifier: ^4.1.2
         version: 4.1.2
+      '@csfaq/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@csfaq/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      '@csfaq/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -193,15 +202,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
-      '@shamagama/types':
-        specifier: workspace:*
-        version: link:../../packages/types
-      '@shamagama/utils':
-        specifier: workspace:*
-        version: link:../../packages/utils
-      '@shamagama/validation':
-        specifier: workspace:*
-        version: link:../../packages/validation
       '@xenova/transformers':
         specifier: ^2.0.1
         version: 2.17.2
@@ -293,7 +293,7 @@ importers:
 
   packages/validation:
     dependencies:
-      '@shamagama/types':
+      '@csfaq/types':
         specifier: workspace:*
         version: link:../types
       zod:
