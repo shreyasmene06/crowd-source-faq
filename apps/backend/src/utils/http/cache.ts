@@ -35,7 +35,14 @@ function getRedis(): CacheClient | null {
   const upstashUrl = config.redis.url;
   const upstashToken = config.redis.token;
   
-  if (!useLocalFallback && upstashUrl && upstashUrl.startsWith('http') && upstashToken && upstashToken !== '#') {
+  const hasUpstash = upstashUrl && upstashUrl.startsWith('http') && upstashToken && upstashToken !== '#';
+  const localUrlExplicit = !!process.env.REDIS_LOCAL_URL;
+
+  if (!hasUpstash && !localUrlExplicit) {
+    return null;
+  }
+  
+  if (!useLocalFallback && hasUpstash) {
     try {
       const client = new UpstashRedis({
         url: upstashUrl,
@@ -88,18 +95,8 @@ function getRedis(): CacheClient | null {
 }
 
 function getLocalRedisClient(): CacheClient | null {
-  // v1.71 — guard against the "prod has no Redis container" footgun.
-  // Before this, prod would silently attempt redis://127.0.0.1:6379 on
-  // every cache miss (Upstash REST errors switch us to local fallback).
-  // Each attempt stalls the request for ~10s on ECONNREFUSED, which
-  // manifests as 502 from nginx via proxy_read_timeout. Now: only attempt
-  // the local fallback in dev, or when the operator has explicitly set
-  // REDIS_LOCAL_URL. In prod without that var we return null and the
-  // cache becomes a no-op — slower, but the site stays up.
-  const isDev = process.env.NODE_ENV === 'development';
   const localUrlExplicit = !!process.env.REDIS_LOCAL_URL;
-  if (!isDev && !localUrlExplicit) {
-    logger.warn('[cache] Skipping local Redis fallback (NODE_ENV=production and REDIS_LOCAL_URL not set). Cache will be a no-op.');
+  if (!localUrlExplicit) {
     return null;
   }
   try {

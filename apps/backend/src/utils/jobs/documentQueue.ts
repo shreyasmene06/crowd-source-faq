@@ -70,27 +70,20 @@ function getRedisUrl(): string {
     return '';
   }
   const config = loadConfig();
-  const fallback = process.env.REDIS_LOCAL_TCP_URL || 'redis://127.0.0.1:6379';
-  // v1.71 — guard against the prod-has-no-Redis-container footgun. Without
-  // this, every failed BullMQ connection attempt in prod resolves to
-  // redis://127.0.0.1:6379 and stalls, with the failure handler logging
-  // noise while the HTTP server keeps responding slowly. In prod without
-  // REDIS_LOCAL_TCP_URL we return empty string, which causes
-  // buildConnectionOptions() to return null and startDocumentWorker() to
-  // disable the queue cleanly (uploads return 503, which is documented
-  // behaviour for "no queue configured").
-  const isDev = process.env.NODE_ENV === 'development';
+  const url = config.redis.tcpUrl || process.env.REDIS_TCP_URL;
+  const hasRemoteUrl = url && url !== '#' && url.trim() !== '';
+  
   const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
-  if (!isDev && !localUrlExplicit) {
+  
+  // Only enable Redis if explicitly configured or local fallback is explicitly set
+  if (!hasRemoteUrl && !localUrlExplicit) {
     return '';
   }
-  if (useLocalFallback) {
-    return fallback;
+  
+  if (useLocalFallback || !hasRemoteUrl) {
+    return process.env.REDIS_LOCAL_TCP_URL || 'redis://127.0.0.1:6379';
   }
-  const url = config.redis.tcpUrl;
-  if (!url || url === '#' || url.trim() === '') {
-    return process.env.REDIS_TCP_URL || fallback;
-  }
+  
   return url;
 }
 

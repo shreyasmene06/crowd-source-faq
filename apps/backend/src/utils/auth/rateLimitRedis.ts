@@ -49,28 +49,20 @@ function buildRedisClient(): IORedis | null {
   if (process.env.REDIS_DISABLED === 'true') {
     return null;
   }
-  const url = loadConfig().redis.tcpUrl;
-  // v1.71 — same prod-no-local-Redis guard as cache.ts / documentQueue.ts.
-  // Without this, prod login/register would stall on ioredis connect
-  // attempts to a non-existent 127.0.0.1:6379. Returning null here makes
-  // getRedisRateLimitStore() return undefined, which express-rate-limit
-  // treats as "use the default in-memory store" — degraded but functional.
-  if (useLocalFallback) {
-    const isDev = process.env.NODE_ENV === 'development';
-    const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
-    if (!isDev && !localUrlExplicit) {
-      return null;
-    }
+  const config = loadConfig();
+  const url = config.redis.tcpUrl || process.env.REDIS_TCP_URL;
+  const hasRemoteUrl = url && url !== '#' && url.trim() !== '';
+  const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
+  
+  // Only enable Redis if explicitly configured or local fallback is explicitly set
+  if (!hasRemoteUrl && !localUrlExplicit) {
+    return null;
+  }
+  
+  if (useLocalFallback || !hasRemoteUrl) {
     return buildLocalClient();
   }
-  if (!url || url === '#' || url.trim() === '') {
-    const isDev = process.env.NODE_ENV === 'development';
-    const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
-    if (!isDev && !localUrlExplicit) {
-      return null;
-    }
-    return buildLocalClient();
-  }
+  
   try {
     const u = new URL(url);
     const client = new IORedis({
@@ -87,10 +79,8 @@ function buildRedisClient(): IORedis | null {
       if (!useLocalFallback) {
         useLocalFallback = true;
         if (_client === client) {
-          // v1.71 — only swap to local if the prod guard above says it's safe.
-          const isDev = process.env.NODE_ENV === 'development';
           const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
-          if (isDev || localUrlExplicit) {
+          if (localUrlExplicit) {
             _client = buildLocalClient();
           } else {
             _client = null;
@@ -101,9 +91,8 @@ function buildRedisClient(): IORedis | null {
     return client;
   } catch (err) {
     logger.warn(`[rateLimitRedis] Failed to parse remote URL: ${(err as Error).message}. Falling back to local.`);
-    const isDev = process.env.NODE_ENV === 'development';
     const localUrlExplicit = !!process.env.REDIS_LOCAL_TCP_URL;
-    if (!isDev && !localUrlExplicit) {
+    if (!localUrlExplicit) {
       return null;
     }
     return buildLocalClient();
