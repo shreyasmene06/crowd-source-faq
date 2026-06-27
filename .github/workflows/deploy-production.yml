@@ -63,21 +63,24 @@ jobs:
             pnpm build
             cd ../..
 
-            echo "==> Snapshotting log file line count before restart..."
-            LOG_FILE="apps/logs/main_log.txt"
-            PRE_LINES=$(wc -l < "$LOG_FILE" 2>/dev/null || echo 0)
-            echo "    Pre-restart lines: $PRE_LINES"
-
-            echo "==> Printing systemd service configuration..."
-            cat /etc/systemd/system/csfaq.service || true
-
             echo "==> Restarting csfaq service..."
             sudo systemctl restart csfaq.service
 
             echo "==> Reloading nginx..."
             sudo systemctl reload nginx
 
-            echo "==> Deployment complete — capturing startup logs..."
-            bash scripts/capture-startup-logs.sh "$LOG_FILE" "$PRE_LINES" \
-              "http://localhost:6767/csfaq/api/health" 60 10 || true
+            echo "==> Waiting 5 seconds for new session log to be created..."
+            sleep 5
+
+            echo "==> Locating the latest session log..."
+            LOG_FILE=$(ls -t logs/session_*.txt 2>/dev/null | head -n 1 || true)
+            echo "    Latest log file: $LOG_FILE"
+
+            if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
+              echo "==> Capturing startup logs from new session..."
+              bash scripts/capture-startup-logs.sh "$LOG_FILE" 0 \
+                "http://localhost:6767/csfaq/api/health" 60 10 || true
+            else
+              echo "⚠️  No session log files found in logs/"
+            fi
           DEPLOY
