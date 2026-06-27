@@ -63,14 +63,18 @@ jobs:
             pnpm build
             cd ../..
 
+            echo "==> Snapshotting log file line count before restart..."
+            LOG_FILE="apps/logs/main_log.txt"
+            PRE_LINES=$(wc -l < "$LOG_FILE" 2>/dev/null || echo 0)
+            echo "    Pre-restart lines: $PRE_LINES"
+
             echo "==> Restarting csfaq service..."
             sudo systemctl restart csfaq.service
 
             echo "==> Reloading nginx..."
             sudo systemctl reload nginx
 
-            echo "==> Deployment complete."
-
-            echo "==> Showing first 200 lines of application logs..."
-            head -n 200 apps/logs/main_log.txt || true
+            echo "==> Deployment complete — capturing startup logs..."
+            bash scripts/capture-startup-logs.sh "$LOG_FILE" "$PRE_LINES" \
+              "http://localhost:6767/csfaq/api/health" 60 10 || true
           DEPLOY
