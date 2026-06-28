@@ -55,6 +55,12 @@ jobs:
             echo "==> Cleaning quotes from env file..."
             sed -i "s/='\(.*\)'/=\1/; s/=\"\(.*\)\"/=\1/" apps/backend/.env
 
+            echo "==> Forcing NODE_ENV=production..."
+            sed -i 's/^NODE_ENV=.*/NODE_ENV=production/' apps/backend/.env
+            if ! grep -q "^NODE_ENV=" apps/backend/.env; then
+              echo "NODE_ENV=production" >> apps/backend/.env
+            fi
+
             echo "==> Installing all workspace dependencies..."
             pnpm install --frozen-lockfile
 
